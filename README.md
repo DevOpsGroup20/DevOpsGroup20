@@ -4,6 +4,7 @@ DevOps and Cloud-based software. 2026. University of Amsterdam. Group 20.
 
 ## High Level Architecture Diagram
 
+```
 ┌─────────────────────────────────────────────────────────────────┐
 │                           USER REQUEST                          │
 │  POST /booking {customer, ticketCount, simulateFailure?}        │
@@ -92,3 +93,4 @@ DevOps and Cloud-based software. 2026. University of Amsterdam. Group 20.
 │  • IAM Roles & Policies                                         │
 │  • CloudWatch Log Groups                                        │
 │  • CloudWatch Dashboard                                         |
+```
