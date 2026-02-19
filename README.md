@@ -246,7 +246,7 @@ Migrate from current stack to serverless AWS:
 | RabbitMQ (AMQP) | AWS SQS |
 | Zeebe gRPC | Direct Lambda invocation |
 | Camunda workflow engine | Step Functions state machine |
-| PostgreSQL/MySQL | Amazon DynamoDB |
+| N/A | Amazon DynamoDB |
 
 ---
 
