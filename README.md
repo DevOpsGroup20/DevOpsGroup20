@@ -29,10 +29,10 @@ The system must execute three sequential steps to complete a booking:
 Each step must complete successfully before proceeding to the next.
 
 #### Compensation Logic (Saga Pattern)
-If any step fails, the system must automatically rollback previous steps:
+If any step fails, the system must gracefully fail and conclude the booking process.
 
-- **Payment fails/times out** → Release reserved seats
-- **Ticket generation fails** → Refund payment AND release seats
+- **Payment fails/times out** → Release reserved seats.
+- **Ticket generation fails** → Release reserved seats.
 - **Seat reservation fails** → No compensation needed (nothing to rollback)
 
 This ensures no partial bookings exist in the system.
@@ -112,7 +112,7 @@ or (if `simulateBookingFailure == "seats"`)
 ### 3. Workflow Orchestration
 
 The system must:
-- **Orchestrate** the three-step workflow (Reserve → Pay → Ticket)
+- **Orchestrate** the three-step workflow (Check Availability → Pay → Ticket)
 - **Coordinate** compensation logic when failures occur
 - **Track** workflow state and execution history
 - **Enforce** timeouts and retry policies
@@ -128,8 +128,7 @@ In the current system, Camunda/Zeebe handles this orchestration. In the new syst
 Since this is a demonstration system, the three service implementations are **fake/mock services**:
 
 #### Reserve Seats Service
-- Simulate seat reservation logic
-- Check and decrement available seats in database
+- Simulate seat availability logic
 - Generate fake `reservationId`
 - Update booking record in database with `reservationId`
 - Optionally fail based on `simulateBookingFailure` parameter
@@ -280,6 +279,11 @@ The project is successful if:
 - Retries work (ticket generation)
 - Compensation executes on failure
 - Database is updated at each step
+
+**Scalability**
+- 150 requests to book tickets per second
+- System remains responsive under load
+- No timeouts or errors occur - unless failure is being simulated
 
 **API is functional:**
 - `PUT /ticket` returns 202 with bookingId and creates database record
