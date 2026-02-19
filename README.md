@@ -168,8 +168,12 @@ The system must maintain booking state and seat availability in a database:
 
 **SeatCapacity Table** stores:
 - `id` (primary key, string) - Fixed value (e.g., "CAPACITY")
-- `totalSeats` (number) - Total capacity (e.g., 100)
-- `availableSeats` (number) - Current available seats, decremented on reservation, incremented on cancellation/compensation
+- TODO: decide on seat availability logic. Possible path:
+  - fields: `totalSeats`, `availableSeats`
+  - Reserve Seats service checks `availableSeats` before reserving
+  - If seats are available, decrement `availableSeats`
+  - If no seats are available, return error response
+
 
 #### Database Technology
 - Use **Amazon DynamoDB** for serverless, scalable storage
@@ -180,9 +184,11 @@ The system must maintain booking state and seat availability in a database:
 #### Update Pattern
 - Lambda functions update the database after each successful step
 - Step Functions triggers status updates via Lambda
-- Reserve Seats service performs atomic decrement on `availableSeats`
-- Compensation logic performs atomic increment to restore capacity
-- Database serves as source of truth for booking state and seat availability
+- Database serves as source of truth for booking state
+
+- TODO: decide on seat availability update strategy. Possible path:
+  - Reserve Seats service performs atomic decrement on `availableSeats`
+  - Compensation logic performs atomic increment to restore capacity
 
 ---
 
@@ -264,7 +270,7 @@ Migrate from current stack to serverless AWS:
 
 **We ARE building:**
 - Simple booking state persistence (DynamoDB)
-- Basic seat capacity tracking (single-row table)
+- Basic seat availability logic
 - Basic booking record storage with IDs and status
 
 ---
