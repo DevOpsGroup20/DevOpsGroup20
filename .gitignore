@@ -2,3 +2,22 @@ node_modules
 package-lock.json
 
 .aws-sam
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+.env.local
+.env.*.local
