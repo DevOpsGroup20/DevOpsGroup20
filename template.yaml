@@ -60,7 +60,7 @@ Resources:
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
       SSESpecification:
-        SSEEnabled: true
+        SSEEnabled: false
   BookingWorkflow:
     Type: AWS::Serverless::StateMachine
     Properties:

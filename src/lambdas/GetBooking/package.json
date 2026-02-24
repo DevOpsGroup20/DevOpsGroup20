@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {
-    "@types/aws-lambda": "~8"
+    "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/util-dynamodb": "^3",
+    "@types/aws-lambda": "~8",
+    "@types/node": "~22",
+    "esbuild": "^0.25"
   }
 }

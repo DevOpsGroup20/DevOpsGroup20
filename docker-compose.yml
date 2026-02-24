@@ -1,0 +1,15 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=lambda,dynamodb,apigateway,stepfunctions,iam,logs,cloudformation,s3
+      - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - localstack-data:/var/lib/localstack
+
+volumes:
+  localstack-data:
