@@ -223,7 +223,7 @@ Resources:
               Resource: !GetAtt Bookings.Arn
       Tracing:
         Enabled: true
-      Type: STANDARD
+      Type: EXPRESS
       DefinitionSubstitutions:
         bookings_table_name: !Ref Bookings
         seat_reservation_func_name: !GetAtt SeatReservation.Arn
