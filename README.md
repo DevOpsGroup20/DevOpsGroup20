@@ -239,7 +239,85 @@ The infrastructure should be:
 
 ---
 
-### 8. Technology Migration
+### 8. CI/CD & Deployment
+
+The project must include an automated CI/CD pipeline to ensure repeatable, reliable deployments.
+
+#### Pipeline Stages
+The pipeline will run on every push to the main branch and on pull requests:
+
+1. **Lint & Static Analysis** - Check code style and quality
+2. **Unit Tests** - Run automated tests for Lambda function logic
+3. **Build** - Package Lambda functions for deployment
+4. **Deploy (Staging)** - Deploy to a staging environment using CloudFormation
+5. **Integration Tests** - Run end-to-end tests against the staging environment
+6. **Deploy (Production)** - Deploy to production on successful merge to main
+
+#### Tooling
+- **GitHub Actions** for CI/CD pipeline automation
+- **AWS CloudFormation** for infrastructure deployment (`aws cloudformation deploy`)
+- **AWS SAM or raw CloudFormation** for packaging and deploying Lambda functions
+- Deployment credentials managed via GitHub Actions OIDC integration with AWS IAM (no long-lived secrets stored in GitHub)
+
+#### Branch Strategy
+- TODO: define branching strategy (e.g., trunk-based development vs. feature branches)
+
+#### Rollback Strategy
+- TODO: define rollback strategy (e.g., CloudFormation stack rollback on failure, Lambda versioning/aliases)
+
+---
+
+### 9. Autoscaling & Load Testing
+
+#### Autoscaling Behavior
+
+The serverless architecture scales automatically by design:
+
+- **AWS Lambda** scales concurrently per request — each incoming request triggers a separate Lambda invocation. The default regional concurrency limit is **1,000 concurrent executions** (soft limit, can be increased).
+- **API Gateway** supports up to **10,000 requests per second** by default (soft limit).
+- **DynamoDB** will be provisioned in **on-demand capacity mode**, automatically scaling read/write throughput to handle burst traffic.
+- **Step Functions** Standard Workflows support up to **2,000 executions per second** (soft limit).
+- **SQS** scales automatically with no throughput limits relevant to this system.
+
+At **150 requests per second**, each booking triggers multiple Lambda invocations (orchestrator + up to 3 workers). This means peak concurrency could reach ~600–750 concurrent Lambda executions. This is within default limits but should be validated via load testing.
+
+#### Known Scaling Constraints
+
+- **Lambda cold starts** may introduce latency spikes when the system scales up rapidly after a period of low traffic. This should be monitored during load tests.
+- **DynamoDB atomic updates** on the SeatCapacity row may become a bottleneck at high concurrency — TODO: evaluate whether conditional writes or a different capacity model is needed.
+- **Lambda reserved concurrency** will not be set by default, meaning a traffic spike could consume the full account concurrency limit. TODO: decide whether to set reserved concurrency per function.
+
+#### Load Testing
+
+Load testing will be performed to validate that the system sustains **150 requests/second** without errors or unacceptable latency.
+
+**Tooling:** TODO: choose load testing tool (e.g., k6, Artillery, Locust)
+
+**Test Scenarios:**
+
+| Scenario | Description | Target RPS | Success Criteria |
+|----------|-------------|------------|-----------------|
+| Steady-state load | Sustained 150 RPS for 5 minutes, happy path only | 150 | <1% error rate, p99 latency <3s |
+| Ramp-up load | Gradually increase from 0 to 150 RPS over 2 minutes | 0→150 | No errors during ramp-up, system stabilizes |
+| Failure simulation load | 150 RPS with mixed failure simulations | 150 | Compensation logic executes correctly, no partial bookings |
+| Spike test | Sudden burst to 300 RPS for 30 seconds | 300 | System recovers, no permanent errors |
+
+**Metrics to collect during load tests:**
+- API Gateway p50/p95/p99 latency
+- Lambda concurrency (peak and average)
+- Lambda error rate and throttle count
+- DynamoDB consumed capacity units
+- Step Functions execution start rate
+
+---
+
+### 10. Cost Estimation
+
+TODO: provide a structured cost breakdown estimating monthly cost at expected load (150 req/s). Include estimates for: Lambda invocations and duration, API Gateway requests, Step Functions state transitions, DynamoDB read/write units, CloudWatch logs and metrics, X-Ray traces.
+
+---
+
+### 11. Technology Migration
 
 Migrate from current stack to serverless AWS:
 
@@ -290,6 +368,13 @@ The project is successful if:
 - 150 requests to book tickets per second
 - System remains responsive under load
 - No timeouts or errors occur - unless failure is being simulated
+- Load tests confirm autoscaling behavior and validate that Lambda concurrency limits are not breached
+
+**CI/CD pipeline is functional:**
+- Every push triggers automated lint, test, and build stages
+- Deployments to staging and production are fully automated via GitHub Actions
+- No manual steps required to deploy infrastructure or code
+- AWS credentials are managed securely via OIDC (no stored secrets)
 
 **API is functional:**
 - `PUT /ticket` returns 202 with bookingId and creates database record
