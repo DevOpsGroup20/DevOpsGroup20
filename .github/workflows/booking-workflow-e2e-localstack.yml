@@ -2,6 +2,13 @@ name: Booking Workflow E2E (LocalStack)
 
 on:
   pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'template.yaml'
+      - 'src/lambdas/**'
+      - '.github/workflows/booking-workflow-e2e-localstack.yml'
   workflow_dispatch:
 
 env:
