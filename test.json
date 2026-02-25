@@ -1,5 +1,0 @@
-hmazur@hmazur:/mnt/c/repos/personal/DevOpsGroup20$  curl -X PUT https://9fd2p0gyq5.execute-api.eu-central-1.amazonaws.com/Prod/ticket
-{
-    "executionArn":"arn:aws:states:eu-central-1:004628996491:express:BookingWorkflow-Gfu3E5ZX7L7a:4f42f5b9-1229-405f-adf8-3400bac82656:03f9f363-c429-4ea2-9cb5-33edf655ebcc",
-    "startDate":1.772024012671E9
-}
