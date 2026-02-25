@@ -1,0 +1,60 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  id-token: write   # Required for OIDC token request
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Node.js is needed because the lambdas use esbuild (a Node.js tool)
+      # SAM's BuildMethod: esbuild runs npm install + esbuild under the hood
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      # Uses OIDC — no long-lived AWS credentials stored in GitHub.
+      # Requires an IAM role with a trust policy allowing this repo to assume it.
+      # Set AWS_ROLE_ARN and AWS_REGION as GitHub Actions variables (not secrets).
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Compiles TypeScript and bundles each Lambda with esbuild.
+      # --no-cached ensures a clean build on every run.
+      - name: Build
+        run: sam build --no-cached
+
+      # Packages (uploads Lambda zips to S3) and deploys the CloudFormation stack.
+      # --resolve-s3 lets SAM auto-manage the S3 bucket for artifacts.
+      # --no-confirm-changeset skips the manual approval step.
+      # --no-fail-on-empty-changeset avoids pipeline failure when nothing changed.
+      - name: Deploy
+        run: |
+          sam deploy \
+            --stack-name ${{ vars.STACK_NAME }} \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --region ${{ vars.AWS_REGION }} \
+            --role-arn ${{ vars.CLOUDFORMATION_ROLE_ARN }}
