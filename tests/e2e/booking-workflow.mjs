@@ -39,7 +39,7 @@ const scenarios = [
   },
 ];
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function parseJson(text) {
   try {
@@ -88,7 +88,9 @@ async function startBooking(payload) {
 
   const bookingReferenceId = body ? getBookingReferenceId(body) : undefined;
   if (!bookingReferenceId) {
-    throw new Error(`Could not extract bookingReferenceId from response: ${bodyText}`);
+    throw new Error(
+      `Could not extract bookingReferenceId from response: ${bodyText}`,
+    );
   }
 
   return bookingReferenceId;
@@ -107,11 +109,15 @@ async function readBooking(bookingReferenceId) {
   const body = parseJson(bodyText);
 
   if (!response.ok) {
-    throw new Error(`GET /booking/${bookingReferenceId} failed (${response.status}): ${bodyText}`);
+    throw new Error(
+      `GET /booking/${bookingReferenceId} failed (${response.status}): ${bodyText}`,
+    );
   }
 
   if (!body || typeof body !== "object") {
-    throw new Error(`GET /booking/${bookingReferenceId} returned non-JSON body: ${bodyText}`);
+    throw new Error(
+      `GET /booking/${bookingReferenceId} returned non-JSON body: ${bodyText}`,
+    );
   }
 
   return body;
@@ -133,31 +139,43 @@ async function waitForFinalBooking(bookingReferenceId) {
     await sleep(pollIntervalMs);
   }
 
-  throw new Error(`Timed out waiting for booking ${bookingReferenceId} to complete`);
+  throw new Error(
+    `Timed out waiting for booking ${bookingReferenceId} to complete`,
+  );
 }
 
 function assertScenarioResult(scenario, booking, bookingReferenceId) {
   assert.equal(
     booking.bookingReferenceId,
     bookingReferenceId,
-    `[${scenario.name}] bookingReferenceId mismatch`
+    `[${scenario.name}] bookingReferenceId mismatch`,
   );
 
   assert.equal(
     getBookingStatus(booking),
     scenario.expectedStatus,
-    `[${scenario.name}] unexpected final booking status`
+    `[${scenario.name}] unexpected final booking status`,
   );
 
   for (const field of scenario.requiredFields) {
-    assert.equal(typeof booking[field], "string", `[${scenario.name}] expected field ${field} to be set`);
-    assert.notEqual(booking[field], "", `[${scenario.name}] expected field ${field} to be non-empty`);
+    assert.equal(
+      typeof booking[field],
+      "string",
+      `[${scenario.name}] expected field ${field} to be set`,
+    );
+    assert.notEqual(
+      booking[field],
+      "",
+      `[${scenario.name}] expected field ${field} to be non-empty`,
+    );
   }
 
   for (const field of scenario.absentFields) {
     assert.ok(
-      booking[field] === undefined || booking[field] === null || booking[field] === "",
-      `[${scenario.name}] expected field ${field} to be absent`
+      booking[field] === undefined ||
+        booking[field] === null ||
+        booking[field] === "",
+      `[${scenario.name}] expected field ${field} to be absent`,
     );
   }
 }
@@ -173,7 +191,9 @@ async function run() {
 
     assertScenarioResult(scenario, booking, bookingReferenceId);
 
-    console.log(`[${scenario.name}] passed with status=${getBookingStatus(booking)}`);
+    console.log(
+      `[${scenario.name}] passed with status=${getBookingStatus(booking)}`,
+    );
   }
 
   console.log("\\nAll booking workflow scenarios passed");
