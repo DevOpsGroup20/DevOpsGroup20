@@ -5,7 +5,7 @@ type BookingEvent = Record<string, unknown> & {
   simulateBookingFailure?: string;
 };
 
-export const handler: Handler<BookingEvent, BookingEvent> = async event => {
+export const handler: Handler<BookingEvent, BookingEvent> = async (event) => {
   if (event.simulateBookingFailure === "seats") {
     throw new Error("SimulatedSeatReservationFailure");
   }
