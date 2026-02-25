@@ -5,7 +5,7 @@
 ### 1) Initiate a booking
 **As an** end user,  
 **I want to** initiate a new booking process,  
-**so that** can go to the event I love.
+**so that** I can go to the event I love.
 
 **Acceptance Criteria**
 - Given I send `PUT /ticket`, when the request is valid, then I receive `202 Accepted`.
