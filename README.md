@@ -257,7 +257,28 @@ The pipeline will run on every push to the main branch and on pull requests:
 - **GitHub Actions** for CI/CD pipeline automation
 - **AWS CloudFormation** for infrastructure deployment (`aws cloudformation deploy`)
 - **AWS SAM or raw CloudFormation** for packaging and deploying Lambda functions
-- Deployment credentials managed via GitHub Actions OIDC integration with AWS IAM (no long-lived secrets stored in GitHub)
+- For future cloud deployment: use GitHub Actions OIDC integration with AWS IAM (no long-lived secrets stored in GitHub)
+
+#### Implemented E2E Workflow Pipeline
+- Workflow file: `.github/workflows/booking-workflow-e2e-localstack.yml`
+- Coverage:
+  - Happy path
+  - `simulateBookingFailure=seats`
+  - `simulateBookingFailure=payment`
+  - `simulateBookingFailure=ticket`
+- Test runner: `tests/e2e/booking-workflow.mjs`
+- Trigger: `pull_request` and manual `workflow_dispatch`
+- Runtime flow:
+  1. Start LocalStack via `docker compose`
+  2. Build with `samlocal build`
+  3. Deploy into LocalStack with `samlocal deploy`
+  4. Resolve API Gateway id from CloudFormation resources
+  5. Execute E2E scenarios with `npm run test:e2e:booking`
+  6. Always destroy stack and stop LocalStack
+- No AWS credentials or cloud deployment are required for this workflow.
+- Local execution (against LocalStack or any deployed environment):
+  - `BOOKING_API_BASE_URL=<api-base-url> npm run test:e2e:booking`
+- Minimal runbook: `docs/localstack-e2e.md`
 
 #### Branch Strategy
 - TODO: define branching strategy (e.g., trunk-based development vs. feature branches)
