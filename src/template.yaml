@@ -1,0 +1,393 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  API:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: API
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /ticket:
+            put:
+              responses:
+                '200':
+                  description: default OK response
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt APIToBookingWorkflowRole.Arn
+                httpMethod: POST
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartExecution
+                responses:
+                  default:
+                    statusCode: 200
+                requestTemplates:
+                  application/json: !Sub |-
+                    {
+                      "input": "$util.escapeJavaScript($input.json('$'))",
+                      "name": "$context.requestId",
+                      "stateMachineArn": "${BookingWorkflow}"
+                    }
+          /booking/{id}:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetBooking.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowMethods: '''PUT,GET,OPTIONS'''
+        AllowHeaders: '''Content-Type'''
+        AllowOrigin: '''*'''
+        MaxAge: 5
+  Bookings:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: bookingReferenceId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: bookingReferenceId
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: false
+  BookingWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: Create pending booking
+        States:
+          Create pending booking:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:putItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Item:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+                bookingStatus:
+                  S: PENDING
+                createdAt:
+                  S.$: $$.State.EnteredTime
+                updatedAt:
+                  S.$: $$.State.EnteredTime
+            Next: Seat Reservation
+          Seat Reservation:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
+            Parameters:
+              Payload.$: $
+              FunctionName: ${seat_reservation_func_name}
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: Fail booking
+            Next: Add reservationId
+          Add reservationId:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Key:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+              UpdateExpression: SET reservationId = :reservationId, updatedAt = :updatedAt
+              ExpressionAttributeValues:
+                ':reservationId':
+                  S.$: $.reservationId
+                ':updatedAt':
+                  S.$: $$.State.EnteredTime
+            Next: Payment
+          Payment:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
+            Parameters:
+              Payload.$: $
+              FunctionName: ${payment_func_name}
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: Fail booking
+            TimeoutSeconds: 30
+            Next: Add paymentConfirmationId
+          Add paymentConfirmationId:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Key:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+              UpdateExpression: SET paymentConfirmationId = :paymentConfirmationId, updatedAt
+                = :updatedAt
+              ExpressionAttributeValues:
+                ':paymentConfirmationId':
+                  S.$: $.paymentConfirmationId
+                ':updatedAt':
+                  S.$: $$.State.EnteredTime
+            Next: Ticket Generation
+          Ticket Generation:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
+            Parameters:
+              Payload.$: $
+              FunctionName: ${ticket_generation_func_name}
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: Fail booking
+            Next: Complete booking
+          Complete booking:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Key:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+              UpdateExpression: SET ticketId = :ticketId, bookingStatus = :bookingStatus,
+                updatedAt = :updatedAt
+              ExpressionAttributeValues:
+                ':ticketId':
+                  S.$: $.ticketId
+                ':bookingStatus':
+                  S: COMPLETED
+                ':updatedAt':
+                  S.$: $$.State.EnteredTime
+            End: true
+          Fail booking:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Key:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+              UpdateExpression: SET bookingStatus = :bookingStatus, updatedAt = :updatedAt
+              ExpressionAttributeValues:
+                ':bookingStatus':
+                  S: FAILED
+                ':updatedAt':
+                  S.$: $$.State.EnteredTime
+            End: true
+            Retry:
+              - ErrorEquals:
+                  - States.ALL
+                BackoffRate: 2
+                IntervalSeconds: 1
+                MaxAttempts: 3
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt BookingWorkflowLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SeatReservation
+        - LambdaInvokePolicy:
+            FunctionName: !Ref Payment
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TicketGeneration
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt Bookings.Arn
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        bookings_table_name: !Ref Bookings
+        seat_reservation_func_name: !GetAtt SeatReservation.Arn
+        payment_func_name: !GetAtt Payment.Arn
+        ticket_generation_func_name: !GetAtt TicketGeneration.Arn
+      Events:
+        APIPUTticket:
+          Type: Api
+          Properties:
+            Path: /ticket
+            Method: PUT
+            RestApiId: !Ref API
+  BookingWorkflowLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: 90
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: BookingWorkflow
+  GetBooking:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: GetBooking
+      CodeUri: src/lambdas/GetBooking
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          BOOKINGS_TABLE_NAME: !Ref Bookings
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref Bookings
+      Events:
+        APIGETbookingid:
+          Type: Api
+          Properties:
+            Path: /booking/{id}
+            Method: GET
+            RestApiId: !Ref API
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - index.mts
+        External:
+          - '@aws-sdk/*'
+          - aws-sdk
+        Minify: false
+  GetBookingLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: 90
+      LogGroupName: !Sub /aws/lambda/${GetBooking}
+  APIToBookingWorkflowRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt BookingWorkflow.Arn
+  SeatReservation:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: SeatReservation
+      CodeUri: src/lambdas/SeatReservation
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment: {}
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - index.mts
+        External:
+          - '@aws-sdk/*'
+          - aws-sdk
+        Minify: false
+  SeatReservationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: 90
+      LogGroupName: !Sub /aws/lambda/${SeatReservation}
+  Payment:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: Payment
+      CodeUri: src/lambdas/Payment
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment: {}
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - index.mts
+        External:
+          - '@aws-sdk/*'
+          - aws-sdk
+        Minify: false
+  PaymentLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: 90
+      LogGroupName: !Sub /aws/lambda/${Payment}
+  TicketGeneration:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: TicketGeneration
+      CodeUri: src/lambdas/TicketGeneration
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment: {}
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - index.mts
+        External:
+          - '@aws-sdk/*'
+          - aws-sdk
+        Minify: false
+  TicketGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: 90
+      LogGroupName: !Sub /aws/lambda/${TicketGeneration}
