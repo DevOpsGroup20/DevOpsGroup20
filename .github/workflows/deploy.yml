@@ -44,15 +44,12 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-<<<<<<< HEAD
       - name: Install Node dependencies
         run: npm install --no-audit --no-fund
 
       - name: Add local Node binaries to PATH
         run: echo "${GITHUB_WORKSPACE}/node_modules/.bin" >> "$GITHUB_PATH"
 
-=======
->>>>>>> e3f67f2 (Create a deployment pipeline using SAM)
       # Compiles TypeScript and bundles each Lambda with esbuild.
       # --no-cached ensures a clean build on every run.
       - name: Build
