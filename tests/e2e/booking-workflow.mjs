@@ -62,8 +62,20 @@ function getBookingStatus(booking) {
 }
 
 function getBookingReferenceId(startResponse) {
+  if (typeof startResponse.bookingReferenceID === "string") {
+    return startResponse.bookingReferenceID;
+  }
+
+  if (typeof startResponse.bookingID === "string") {
+    return startResponse.bookingID;
+  }
+
   if (typeof startResponse.bookingReferenceId === "string") {
     return startResponse.bookingReferenceId;
+  }
+
+  if (typeof startResponse.id === "string") {
+    return startResponse.id;
   }
 
   if (typeof startResponse.executionArn === "string") {
