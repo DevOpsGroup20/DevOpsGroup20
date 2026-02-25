@@ -3,7 +3,7 @@ name: Deploy to AWS
 on:
   push:
     branches:
-      - dev
+      - DEVOPS-15
     paths:
       - 'template.yaml'
       - 'src/lambdas/**'
