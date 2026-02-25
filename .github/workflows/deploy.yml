@@ -63,7 +63,7 @@ jobs:
         run: |
           sam deploy \
             --stack-name ${{ vars.STACK_NAME }} \
-            --resolve-s3 \
+            --s3-bucket ${{ vars.SAM_ARTIFACTS_BUCKET }} \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
