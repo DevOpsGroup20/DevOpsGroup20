@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "test:e2e:booking": "node tests/e2e/booking-workflow.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.27.3"
+  }
+}
