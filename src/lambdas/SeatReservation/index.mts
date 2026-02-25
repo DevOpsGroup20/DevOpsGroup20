@@ -1,9 +1,17 @@
 import { Handler } from "aws-lambda";
 import { randomUUID } from "crypto";
 
-export const handler: Handler<object, object> = async event => {
+type BookingEvent = Record<string, unknown> & {
+  simulateBookingFailure?: string;
+};
+
+export const handler: Handler<BookingEvent, BookingEvent> = async event => {
+  if (event.simulateBookingFailure === "seats") {
+    throw new Error("SimulatedSeatReservationFailure");
+  }
+
   return {
-    ...(event as object),
+    ...event,
     reservationId: randomUUID(),
   };
 };
