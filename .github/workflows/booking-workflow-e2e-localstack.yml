@@ -23,6 +23,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Add local Node binaries to PATH
+        run: echo "${GITHUB_WORKSPACE}/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
