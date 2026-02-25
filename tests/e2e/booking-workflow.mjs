@@ -221,7 +221,7 @@ async function run() {
   console.log(`Testing booking workflow against ${baseUrl}`);
 
   for (const scenario of scenarios) {
-    console.log(`\\n[${scenario.name}] starting`);
+    console.log(`[${scenario.name}] starting`);
 
     const bookingReferenceId = await startBooking(scenario.input);
     const booking = await waitForFinalBooking(bookingReferenceId);
@@ -233,7 +233,7 @@ async function run() {
     );
   }
 
-  console.log("\\nAll booking workflow scenarios passed");
+  console.log("All booking workflow scenarios passed");
 }
 
 await run();
