@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - dev
+    paths:
+      - 'template.yaml'
+      - 'src/lambdas/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 permissions:
   id-token: write   # Required for OIDC token request
