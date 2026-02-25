@@ -24,7 +24,7 @@ jobs:
           node-version: 22
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Add local Node binaries to PATH
         run: echo "${GITHUB_WORKSPACE}/node_modules/.bin" >> "$GITHUB_PATH"
