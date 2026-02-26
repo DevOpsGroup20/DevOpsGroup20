@@ -3,6 +3,14 @@ import assert from "node:assert/strict";
 const baseUrl = (process.env.BOOKING_API_BASE_URL ?? "").replace(/\/$/, "");
 const pollIntervalMs = Number(process.env.BOOKING_POLL_INTERVAL_MS ?? 1000);
 const pollTimeoutMs = Number(process.env.BOOKING_POLL_TIMEOUT_MS ?? 60000);
+const verbose =
+  process.env.BOOKING_VERBOSE === "1" ||
+  process.env.BOOKING_VERBOSE === "true";
+
+function logVerbose(label, data) {
+  if (!verbose) return;
+  console.log(`  [verbose] ${label}:\n${JSON.stringify(data, null, 2)}`);
+}
 
 if (!baseUrl) {
   throw new Error("BOOKING_API_BASE_URL is required");
@@ -85,7 +93,10 @@ function getBookingReferenceId(startResponse) {
 }
 
 async function startBooking(payload) {
-  const response = await fetch(`${baseUrl}/ticket`, {
+  const url = `${baseUrl}/ticket`;
+  logVerbose("PUT /ticket request", { url, method: "PUT", body: payload });
+
+  const response = await fetch(url, {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
@@ -93,6 +104,11 @@ async function startBooking(payload) {
 
   const bodyText = await response.text();
   const body = parseJson(bodyText);
+
+  logVerbose("PUT /ticket response", {
+    status: response.status,
+    body: body ?? bodyText,
+  });
 
   if (!response.ok) {
     throw new Error(`PUT /ticket failed (${response.status}): ${bodyText}`);
@@ -109,16 +125,25 @@ async function startBooking(payload) {
 }
 
 async function readBooking(bookingReferenceId) {
-  const response = await fetch(`${baseUrl}/booking/${bookingReferenceId}`, {
+  const url = `${baseUrl}/booking/${bookingReferenceId}`;
+  logVerbose(`GET /booking/${bookingReferenceId} request`, { url, method: "GET" });
+
+  const response = await fetch(url, {
     method: "GET",
   });
 
   if (response.status === 404) {
+    logVerbose(`GET /booking/${bookingReferenceId} response`, { status: 404, body: null });
     return undefined;
   }
 
   const bodyText = await response.text();
   const body = parseJson(bodyText);
+
+  logVerbose(`GET /booking/${bookingReferenceId} response`, {
+    status: response.status,
+    body: body ?? bodyText,
+  });
 
   if (!response.ok) {
     throw new Error(
