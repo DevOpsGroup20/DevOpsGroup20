@@ -2,6 +2,10 @@
   "name": "function",
   "version": "1.0.0",
   "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/client-sfn": "^3"
+  },
   "devDependencies": {
     "@types/aws-lambda": "~8",
     "@types/node": "~22",

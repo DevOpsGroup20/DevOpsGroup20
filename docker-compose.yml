@@ -4,7 +4,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=lambda,dynamodb,apigateway,stepfunctions,iam,logs,cloudformation,s3
+      - SERVICES=lambda,dynamodb,apigateway,stepfunctions,iam,logs,cloudformation,s3,sqs
       - DEBUG=1
       - LAMBDA_EXECUTOR=docker
     volumes:
