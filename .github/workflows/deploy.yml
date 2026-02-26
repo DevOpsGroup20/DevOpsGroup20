@@ -5,13 +5,13 @@ on:
     branches:
       - dev
     paths:
-      - 'template.yaml'
-      - 'src/lambdas/**'
-      - '.github/workflows/deploy.yml'
+      - "template.yaml"
+      - "src/lambdas/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 permissions:
-  id-token: write   # Required for OIDC token request
+  id-token: write # Required for OIDC token request
   contents: read
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Set up SAM CLI
         uses: aws-actions/setup-sam@v2
@@ -86,6 +86,6 @@ jobs:
 
           aws dynamodb put-item \
             --table-name "$SEAT_TABLE" \
-            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"${{ vars.TOTAL_SEATS }}}","availableSeats":{"N":"${{ vars.AVAILABLE_SEATS }}}"}' \
+            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"${{ vars.TOTAL_SEATS }}"},"availableSeats":{"N":"${{ vars.AVAILABLE_SEATS }}"}}' \
             --condition-expression "attribute_not_exists(id)" \
             --region "${{ vars.AWS_REGION }}" || true
