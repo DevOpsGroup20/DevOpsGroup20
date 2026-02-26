@@ -87,6 +87,24 @@ jobs:
 
           echo "BOOKING_API_BASE_URL=http://localhost:4566/restapis/${API_ID}/Prod/_user_request_" >> "$GITHUB_ENV"
 
+          SEAT_TABLE="$(awslocal cloudformation describe-stack-resources \
+            --stack-name "$STACK_NAME" \
+            --logical-resource-id SeatCapacity \
+            --query "StackResources[0].PhysicalResourceId" \
+            --output text)"
+
+          if [ -z "$SEAT_TABLE" ] || [ "$SEAT_TABLE" = "None" ]; then
+            echo "Failed to resolve SeatCapacity table name from CloudFormation resources"
+            exit 1
+          fi
+
+          awslocal dynamodb put-item \
+            --table-name "$SEAT_TABLE" \
+            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"100"},"availableSeats":{"N":"100"}}' \
+            --condition-expression "attribute_not_exists(id)" || true
+
+          echo "SEAT_CAPACITY_TABLE_NAME=${SEAT_TABLE}" >> "$GITHUB_ENV"
+
       - name: Run booking workflow E2E tests
         run: npm run test:e2e:booking
 

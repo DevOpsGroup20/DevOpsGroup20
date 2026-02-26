@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 
 const baseUrl = (process.env.BOOKING_API_BASE_URL ?? "").replace(/\/$/, "");
+const seatCapacityTableName = process.env.SEAT_CAPACITY_TABLE_NAME ?? "";
 const pollIntervalMs = Number(process.env.BOOKING_POLL_INTERVAL_MS ?? 1000);
 const pollTimeoutMs = Number(process.env.BOOKING_POLL_TIMEOUT_MS ?? 60000);
 const verbose =
@@ -15,6 +17,16 @@ function logVerbose(label, data) {
 if (!baseUrl) {
   throw new Error("BOOKING_API_BASE_URL is required");
 }
+
+if (!seatCapacityTableName) {
+  throw new Error("SEAT_CAPACITY_TABLE_NAME is required");
+}
+
+const dynamoDbClient = new DynamoDBClient({
+  ...(process.env.LOCALSTACK_ENDPOINT
+    ? { endpoint: process.env.LOCALSTACK_ENDPOINT }
+    : {}),
+});
 
 const scenarios = [
   {
@@ -217,6 +229,27 @@ function assertScenarioResult(scenario, booking, bookingReferenceId) {
   }
 }
 
+async function assertFinalAvailableSeats(expectedAvailableSeats) {
+  const response = await dynamoDbClient.send(
+    new GetItemCommand({
+      TableName: seatCapacityTableName,
+      Key: {
+        id: {
+          S: "CAPACITY",
+        },
+      },
+      ConsistentRead: true,
+    }),
+  );
+
+  const availableSeats = Number(response.Item?.availableSeats?.N);
+  assert.equal(
+    availableSeats,
+    expectedAvailableSeats,
+    `Expected final availableSeats to be ${expectedAvailableSeats}, got ${availableSeats}`,
+  );
+}
+
 async function run() {
   console.log(`Testing booking workflow against ${baseUrl}`);
 
@@ -232,6 +265,9 @@ async function run() {
       `[${scenario.name}] passed with status=${getBookingStatus(booking)}`,
     );
   }
+
+  await assertFinalAvailableSeats(99);
+  console.log("[seat-capacity] passed with availableSeats=99");
 
   console.log("All booking workflow scenarios passed");
 }

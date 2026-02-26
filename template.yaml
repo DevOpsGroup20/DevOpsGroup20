@@ -66,6 +66,18 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
       SSESpecification:
         SSEEnabled: false
+  SeatCapacity:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
   PaymentQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -136,7 +148,7 @@ Resources:
             Catch:
               - ErrorEquals:
                   - States.ALL
-                Next: Fail booking
+                Next: Release Seats
             TimeoutSeconds: 30
             Next: Ticket Generation
           Ticket Generation:
@@ -149,7 +161,7 @@ Resources:
             Catch:
               - ErrorEquals:
                   - States.ALL
-                Next: Fail booking
+                Next: Release Seats
             Next: Complete booking
           Complete booking:
             Type: Task
@@ -170,6 +182,20 @@ Resources:
                 ":updatedAt":
                   S.$: $$.State.EnteredTime
             End: true
+          Release Seats:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${seat_capacity_table_name}
+              Key:
+                id:
+                  S: CAPACITY
+              UpdateExpression: SET availableSeats = availableSeats + :inc
+              ExpressionAttributeValues:
+                ":inc":
+                  N: "1"
+            ResultPath: $.meta.releaseSeats
+            Next: Fail booking
           Fail booking:
             Type: Task
             Resource: arn:aws:states:::dynamodb:updateItem
@@ -224,6 +250,11 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt SeatCapacity.Arn
+        - Statement:
+            - Effect: Allow
+              Action:
                 - sqs:SendMessage
               Resource: !GetAtt PaymentQueue.Arn
       Tracing:
@@ -231,6 +262,7 @@ Resources:
       Type: STANDARD
       DefinitionSubstitutions:
         bookings_table_name: !Ref Bookings
+        seat_capacity_table_name: !Ref SeatCapacity
         seat_reservation_func_name: !GetAtt SeatReservation.Arn
         payment_queue_url: !Ref PaymentQueue
         ticket_generation_func_name: !GetAtt TicketGeneration.Arn
@@ -321,7 +353,15 @@ Resources:
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
-      Environment: {}
+      Environment:
+        Variables:
+          SEAT_CAPACITY_TABLE_NAME: !Ref SeatCapacity
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt SeatCapacity.Arn
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
