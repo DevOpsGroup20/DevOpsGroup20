@@ -86,6 +86,6 @@ jobs:
 
           aws dynamodb put-item \
             --table-name "$SEAT_TABLE" \
-            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"100"},"availableSeats":{"N":"100"}}' \
+            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"${{ vars.TOTAL_SEATS }}}","availableSeats":{"N":"${{ vars.AVAILABLE_SEATS }}}"}' \
             --condition-expression "attribute_not_exists(id)" \
             --region "${{ vars.AWS_REGION }}" || true
