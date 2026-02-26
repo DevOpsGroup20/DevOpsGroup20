@@ -80,14 +80,7 @@ This allows testing of compensation logic without external dependencies.
   "bookingReferenceId": "uuid-string"
 }
 ```
-or (if `simulateBookingFailure == "seats"`)
-
-`404 Not Found` if seat reservation fails:
-```json
-{
-  "error": "ErrorSeatsNotAvailable"
-}
-```
+If seat reservation later fails (`simulateBookingFailure=seats` or no capacity), the booking ends as `FAILED` and can be observed via `GET /booking/{bookingReferenceId}`.
 
 #### Get Booking Status Endpoint
 **Endpoint:** `GET /booking/{bookingReferenceId}`
@@ -128,10 +121,12 @@ In the current system, Camunda/Zeebe handles this orchestration. In the new syst
 Since this is a demonstration system, the three service implementations are **fake/mock services**:
 
 #### Reserve Seats Service
-- Simulate seat availability logic
-- Generate fake `reservationId`
-- Update booking record in database with `reservationId`
-- Optionally fail based on `simulateBookingFailure` parameter
+- Reads `SEAT_CAPACITY_TABLE_NAME` from environment
+- If `simulateBookingFailure=seats`, throws before any seat decrement
+- Atomically decrements `availableSeats` with a conditional DynamoDB update (`availableSeats >= 1`)
+- Throws `NoSeatsAvailable` when conditional update fails
+- Generates fake `reservationId` on success
+- Booking record is updated by the Step Functions `Add reservationId` state
 
 #### Payment Service
 - Simulate payment processing with 2-second delay
@@ -168,11 +163,8 @@ The system must maintain booking state and seat availability in a database:
 
 **SeatCapacity Table** stores:
 - `id` (primary key, string) - Fixed value (e.g., "CAPACITY")
-- TODO: decide on seat availability logic. Possible path:
-  - fields: `totalSeats`, `availableSeats`
-  - Reserve Seats service checks `availableSeats` before reserving
-  - If seats are available, decrement `availableSeats`
-  - If no seats are available, return error response
+- `totalSeats` (number) - Seeded for local E2E testing
+- `availableSeats` (number) - Current remaining capacity
 
 
 #### Database Technology
@@ -185,10 +177,9 @@ The system must maintain booking state and seat availability in a database:
 - Lambda functions update the database after each successful step
 - Step Functions triggers status updates via Lambda
 - Database serves as source of truth for booking state
-
-- TODO: decide on seat availability update strategy. Possible path:
-  - Reserve Seats service performs atomic decrement on `availableSeats`
-  - Compensation logic performs atomic increment to restore capacity
+- Seat reservation performs atomic decrement on `SeatCapacity.availableSeats`
+- Compensation (`Release Seats` state) performs atomic increment when payment/ticket steps fail
+- Seat reservation failures go directly to `Fail booking` (no release needed because no seat was taken)
 
 ---
 
@@ -266,6 +257,7 @@ The pipeline will run on every push to the main branch and on pull requests:
   - `simulateBookingFailure=seats`
   - `simulateBookingFailure=payment`
   - `simulateBookingFailure=ticket`
+  - Final seat capacity assertion (`availableSeats=99`)
 - Test runner: `tests/e2e/booking-workflow.mjs`
 - Trigger: `pull_request` and manual `workflow_dispatch`
 - Runtime flow:
@@ -273,11 +265,14 @@ The pipeline will run on every push to the main branch and on pull requests:
   2. Build with `samlocal build`
   3. Deploy into LocalStack with `samlocal deploy`
   4. Resolve API Gateway id from CloudFormation resources
-  5. Execute E2E scenarios with `npm run test:e2e:booking`
-  6. Always destroy stack and stop LocalStack
+  5. Resolve `SeatCapacity` table and seed `CAPACITY` row (`totalSeats=100`, `availableSeats=100`)
+  6. Execute E2E scenarios with `npm run test:e2e:booking`
+  7. Always destroy stack and stop LocalStack
 - No AWS credentials or cloud deployment are required for this workflow.
 - Local execution (against LocalStack or any deployed environment):
-  - `BOOKING_API_BASE_URL=<api-base-url> npm run test:e2e:booking`
+  - `BOOKING_API_BASE_URL=<api-base-url> SEAT_CAPACITY_TABLE_NAME=<table-name> npm run test:e2e:booking`
+- One-command local runner (verbose by default):
+  - `./scripts/run-booking-e2e-localstack.sh`
 - Minimal runbook: `docs/localstack-e2e.md`
 
 #### Branch Strategy
