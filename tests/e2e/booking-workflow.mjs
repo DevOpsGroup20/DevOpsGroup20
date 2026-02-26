@@ -242,6 +242,16 @@ async function assertFinalAvailableSeats(expectedAvailableSeats) {
     }),
   );
 
+  if (
+    !response.Item ||
+    !response.Item.availableSeats ||
+    response.Item.availableSeats.N === undefined
+  ) {
+    assert.fail(
+      `Seat capacity item not found or invalid in table "${seatCapacityTableName}" for id="CAPACITY". Ensure the capacity row is seeded before running this test.`,
+    );
+  }
+
   const availableSeats = Number(response.Item?.availableSeats?.N);
   assert.equal(
     availableSeats,
