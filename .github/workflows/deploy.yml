@@ -69,3 +69,23 @@ jobs:
             --no-fail-on-empty-changeset \
             --region ${{ vars.AWS_REGION }} \
             --role-arn ${{ vars.CLOUDFORMATION_ROLE_ARN }}
+
+      - name: Seed SeatCapacity row
+        run: |
+          SEAT_TABLE="$(aws cloudformation describe-stack-resources \
+            --stack-name "${{ vars.STACK_NAME }}" \
+            --logical-resource-id SeatCapacity \
+            --query "StackResources[0].PhysicalResourceId" \
+            --output text \
+            --region "${{ vars.AWS_REGION }}")"
+
+          if [ -z "$SEAT_TABLE" ] || [ "$SEAT_TABLE" = "None" ]; then
+            echo "Failed to resolve SeatCapacity table name from CloudFormation resources"
+            exit 1
+          fi
+
+          aws dynamodb put-item \
+            --table-name "$SEAT_TABLE" \
+            --item '{"id":{"S":"CAPACITY"},"totalSeats":{"N":"100"},"availableSeats":{"N":"100"}}' \
+            --condition-expression "attribute_not_exists(id)" \
+            --region "${{ vars.AWS_REGION }}" || true
