@@ -28,6 +28,8 @@ Based on AWS pricing for the eu-central-1 (Frankfurt) region:
 
 ### Cost Analysis by Load Scenario
 
+The following scenarios represent the **actual expected operational loads** of the system and are used for cost estimation purposes. Note that 150 req/s is the maximum peak load used exclusively for load testing (see README section 9).
+
 **Low Load**: ~5,000 requests/day (150k/month)
 **Medium Load**: ~20,000 requests/day (600k/month)
 
