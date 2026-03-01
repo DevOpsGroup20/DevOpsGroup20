@@ -31,8 +31,8 @@ Each step must complete successfully before proceeding to the next.
 #### Compensation Logic (Saga Pattern)
 If any step fails, the system must gracefully fail and conclude the booking process.
 
-- **Payment fails/times out** → Release reserved seats.
-- **Ticket generation fails** → Release reserved seats.
+- **Payment fails/times out** → Step Functions increments availableSeats back in the SeatCapacity table, then marks booking as FAILED."
+- **Ticket generation fails** → Step Functions increments availableSeats back in the SeatCapacity table, then marks booking as FAILED."
 - **Seat reservation fails** → No compensation needed (nothing to rollback)
 
 This ensures no partial bookings exist in the system.
@@ -162,10 +162,11 @@ The system must maintain booking state and seat availability in a database:
 - `updatedAt` (timestamp) - Last status update
 
 **SeatCapacity Table** stores:
-- `id` (primary key, string) - Fixed value (e.g., "CAPACITY")
-- `totalSeats` (number) - Seeded for local E2E testing
-- `availableSeats` (number) - Current remaining capacity
+- `id` (primary key, string) - Fixed value "CAPACITY"
+  - `totalSeats` (number) - Total seat capacity, configured at deployment
+  - `availableSeats` (number) - Current available seats, updated atomically on each reservation
 
+The table is seeded on deployment using GitHub Actions variables (`TOTAL_SEATS`, `AVAILABLE_SEATS`), with a conditional write that skips the seed if the row already exists.
 
 #### Database Technology
 - Use **Amazon DynamoDB** for serverless, scalable storage
@@ -175,7 +176,7 @@ The system must maintain booking state and seat availability in a database:
 
 #### Update Pattern
 - Lambda functions update the database after each successful step
-- Step Functions triggers status updates via Lambda
+- Step Functions directly updates DynamoDB via SDK integrations 
 - Database serves as source of truth for booking state
 - Seat reservation performs atomic decrement on `SeatCapacity.availableSeats`
 - Compensation (`Release Seats` state) performs atomic increment when payment/ticket steps fail
@@ -216,7 +217,7 @@ The system must provide:
 All infrastructure must be defined and deployed using **CloudFormation**:
 
 - API Gateway HTTP API
-- Lambda functions (5 total: orchestrator, 3 workers, status checker)
+- Lambda functions (4 total: SeatReservation, Payment, TicketGeneration, GetBooking)
 - Step Functions state machine
 - DynamoDB tables (Bookings and SeatCapacity)
 - SQS queue (for async payment processing)
@@ -300,7 +301,7 @@ At **150 requests per second**, each booking triggers multiple Lambda invocation
 #### Known Scaling Constraints
 
 - **Lambda cold starts** may introduce latency spikes when the system scales up rapidly after a period of low traffic. This should be monitored during load tests.
-- **DynamoDB atomic updates** on the SeatCapacity row may become a bottleneck at high concurrency — TODO: evaluate whether conditional writes or a different capacity model is needed.
+- **DynamoDB atomic updates** on the SeatCapacity row (availableSeats conditional decrement) may become a contention point under high concurrency. At 150 runs per second, this should be validated during load testing.
 - **Lambda reserved concurrency** will not be set by default, meaning a traffic spike could consume the full account concurrency limit. TODO: decide whether to set reserved concurrency per function.
 
 #### Load Testing
