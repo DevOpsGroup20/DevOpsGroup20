@@ -310,7 +310,6 @@ Resources:
             Path: /booking/{id}
             Method: GET
             RestApiId: !Ref API
-      ReservedConcurrentExecutions: 90
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -366,7 +365,6 @@ Resources:
               Action:
                 - dynamodb:UpdateItem
               Resource: !GetAtt SeatCapacity.Arn
-      ReservedConcurrentExecutions: 300
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -396,7 +394,6 @@ Resources:
       Timeout: 30
       Tracing: Active
       Environment: {}
-      ReservedConcurrentExecutions: 300
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -426,7 +423,6 @@ Resources:
       Timeout: 30
       Tracing: Active
       Environment: {}
-      ReservedConcurrentExecutions: 300
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
