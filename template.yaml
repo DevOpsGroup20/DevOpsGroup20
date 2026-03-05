@@ -14,8 +14,8 @@ Resources:
           /ticket:
             put:
               responses:
-                '200':
-                  description: default OK response
+                '202':
+                  description: default Accepted response
               x-amazon-apigateway-integration:
                 credentials: !GetAtt APIToBookingWorkflowRole.Arn
                 httpMethod: POST
@@ -23,7 +23,7 @@ Resources:
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartExecution
                 responses:
                   default:
-                    statusCode: 200
+                    statusCode: 202
                     responseTemplates:
                       application/json: |-
                         {
