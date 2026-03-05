@@ -82,7 +82,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: payment-request-queue
-      VisibilityTimeout: 60
+      VisibilityTimeout: 180
   BookingWorkflow:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -146,7 +146,7 @@ Resources:
               - ErrorEquals:
                   - States.ALL
                 Next: Release Seats
-            TimeoutSeconds: 30
+            TimeoutSeconds: 300
             Next: Ticket Generation
           Ticket Generation:
             Type: Task
@@ -404,7 +404,10 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt PaymentQueue.Arn
-            BatchSize: 5
+            BatchSize: 10
+            ScalingConfig:
+              MaximumConcurrency: 500
+
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
