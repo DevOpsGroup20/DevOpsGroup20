@@ -310,7 +310,7 @@ Resources:
             Path: /booking/{id}
             Method: GET
             RestApiId: !Ref API
-      ReservedConcurrentExecutions: 100
+      ReservedConcurrentExecutions: 90
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
