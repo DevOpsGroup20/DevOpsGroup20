@@ -218,9 +218,8 @@ All infrastructure must be defined and deployed using **CloudFormation**:
 
 - API Gateway HTTP API
 - Lambda functions (4 total: SeatReservation, Payment, TicketGeneration, GetBooking)
-- Step Functions state machine
+- Step Functions Express state machine
 - DynamoDB tables (Bookings and SeatCapacity)
-- SQS queue (for async payment processing)
 - IAM roles and policies
 - CloudWatch log groups, dashboards, and alarms
 - X-Ray tracing configuration
@@ -293,8 +292,7 @@ The serverless architecture scales automatically by design:
 - **AWS Lambda** scales concurrently per request — each incoming request triggers a separate Lambda invocation. The default regional concurrency limit is **1,000 concurrent executions** (soft limit, can be increased).
 - **API Gateway** supports up to **10,000 requests per second** by default (soft limit).
 - **DynamoDB** will be provisioned in **on-demand capacity mode**, automatically scaling read/write throughput to handle burst traffic.
-- **Step Functions** Standard Workflows support up to **2,000 executions per second** (soft limit).
-- **SQS** scales automatically with no throughput limits relevant to this system.
+- **Step Functions** Express Workflows support up to **100,000 state transitions per second** and are optimized for high-volume, short-duration workloads (max 5-minute execution duration).
 
 At **150 requests per second**, each booking triggers multiple Lambda invocations (orchestrator + up to 3 workers). This means peak concurrency could reach ~600–750 concurrent Lambda executions. This is within default limits but should be validated via load testing.
 
@@ -340,12 +338,12 @@ Migrate from current stack to serverless AWS:
 
 | Current | New (Serverless) |
 |---------|------------------|
-| Camunda Cloud (Zeebe) | AWS Step Functions |
+| Camunda Cloud (Zeebe) | AWS Step Functions (Express) |
 | Java Spring Boot REST API | AWS API Gateway + Lambda |
 | Node.js Zeebe workers | AWS Lambda (Node.js) |
-| RabbitMQ (AMQP) | AWS SQS |
+| RabbitMQ (AMQP) | N/A |
 | Zeebe gRPC | Direct Lambda invocation |
-| Camunda workflow engine | Step Functions state machine |
+| Camunda workflow engine | Step Functions Express state machine |
 | N/A | Amazon DynamoDB |
 
 ---
