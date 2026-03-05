@@ -81,9 +81,7 @@ Resources:
   PaymentQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: payment-request.fifo
-      FifoQueue: false
-      # ContentBasedDeduplication: true
+      QueueName: payment-request-queue
       VisibilityTimeout: 60
   BookingWorkflow:
     Type: AWS::Serverless::StateMachine
@@ -140,7 +138,6 @@ Resources:
             Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
             Parameters:
               QueueUrl: ${payment_queue_url}
-              MessageGroupId.$: $$.Execution.Name
               MessageBody:
                 taskToken.$: $$.Task.Token
                 bookingReferenceId.$: $$.Execution.Name
