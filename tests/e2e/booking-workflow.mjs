@@ -5,9 +5,7 @@ const baseUrl = (process.env.BOOKING_API_BASE_URL ?? "").replace(/\/$/, "");
 const seatCapacityTableName = process.env.SEAT_CAPACITY_TABLE_NAME ?? "";
 const pollIntervalMs = Number(process.env.BOOKING_POLL_INTERVAL_MS ?? 1000);
 const pollTimeoutMs = Number(process.env.BOOKING_POLL_TIMEOUT_MS ?? 60000);
-const verbose =
-  process.env.BOOKING_VERBOSE === "1" ||
-  process.env.BOOKING_VERBOSE === "true";
+const verbose = process.env.BOOKING_VERBOSE === "1" || process.env.BOOKING_VERBOSE === "true";
 
 function logVerbose(label, data) {
   if (!verbose) return;
@@ -23,9 +21,7 @@ if (!seatCapacityTableName) {
 }
 
 const dynamoDbClient = new DynamoDBClient({
-  ...(process.env.LOCALSTACK_ENDPOINT
-    ? { endpoint: process.env.LOCALSTACK_ENDPOINT }
-    : {}),
+  ...(process.env.LOCALSTACK_ENDPOINT ? { endpoint: process.env.LOCALSTACK_ENDPOINT } : {}),
 });
 
 const scenarios = [
@@ -128,9 +124,7 @@ async function startBooking(payload) {
 
   const bookingReferenceId = body ? getBookingReferenceId(body) : undefined;
   if (!bookingReferenceId) {
-    throw new Error(
-      `Could not extract bookingReferenceId from response: ${bodyText}`,
-    );
+    throw new Error(`Could not extract bookingReferenceId from response: ${bodyText}`);
   }
 
   return bookingReferenceId;
@@ -158,15 +152,11 @@ async function readBooking(bookingReferenceId) {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `GET /booking/${bookingReferenceId} failed (${response.status}): ${bodyText}`,
-    );
+    throw new Error(`GET /booking/${bookingReferenceId} failed (${response.status}): ${bodyText}`);
   }
 
   if (!body || typeof body !== "object") {
-    throw new Error(
-      `GET /booking/${bookingReferenceId} returned non-JSON body: ${bodyText}`,
-    );
+    throw new Error(`GET /booking/${bookingReferenceId} returned non-JSON body: ${bodyText}`);
   }
 
   return body;
@@ -188,9 +178,7 @@ async function waitForFinalBooking(bookingReferenceId) {
     await sleep(pollIntervalMs);
   }
 
-  throw new Error(
-    `Timed out waiting for booking ${bookingReferenceId} to complete`,
-  );
+  throw new Error(`Timed out waiting for booking ${bookingReferenceId} to complete`);
 }
 
 function assertScenarioResult(scenario, booking, bookingReferenceId) {
@@ -221,9 +209,7 @@ function assertScenarioResult(scenario, booking, bookingReferenceId) {
 
   for (const field of scenario.absentFields) {
     assert.ok(
-      booking[field] === undefined ||
-        booking[field] === null ||
-        booking[field] === "",
+      booking[field] === undefined || booking[field] === null || booking[field] === "",
       `[${scenario.name}] expected field ${field} to be absent`,
     );
   }
@@ -271,9 +257,7 @@ async function run() {
 
     assertScenarioResult(scenario, booking, bookingReferenceId);
 
-    console.log(
-      `[${scenario.name}] passed with status=${getBookingStatus(booking)}`,
-    );
+    console.log(`[${scenario.name}] passed with status=${getBookingStatus(booking)}`);
   }
 
   await assertFinalAvailableSeats(99);

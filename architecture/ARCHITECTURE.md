@@ -8,26 +8,26 @@ on AWS. The core business logic and the separation of the three fake services ar
 
 **Key replacements:**
 
-| Original | AWS Replacement |
-|---|---|
-| Camunda Zeebe (BPMN workflow) | AWS Step Functions (Standard Workflow) |
-| RabbitMQ (AMQP queues) | Amazon SQS |
-| Spring Boot REST layer | API Gateway + Lambda |
-| Zeebe workflow state | Amazon DynamoDB |
-| Fake services (gRPC/AMQP/REST) | Three isolated Lambda functions |
+| Original                       | AWS Replacement                        |
+| ------------------------------ | -------------------------------------- |
+| Camunda Zeebe (BPMN workflow)  | AWS Step Functions (Standard Workflow) |
+| RabbitMQ (AMQP queues)         | Amazon SQS                             |
+| Spring Boot REST layer         | API Gateway + Lambda                   |
+| Zeebe workflow state           | Amazon DynamoDB                        |
+| Fake services (gRPC/AMQP/REST) | Three isolated Lambda functions        |
 
 ## Service Inventory
 
 ### API & Compute
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **API Gateway** | `booking-api` (HTTP API) | Public HTTPS entry point; routes PUT /ticket and GET /booking/{id}; requires `x-api-key` header on all routes; per-route throttling via Usage Plan (see Design Decisions) |
-| **Lambda** | `booking-initiator` | Handles PUT /ticket: writes DynamoDB, starts Step Functions, returns 202; timeout 30 s |
-| **Lambda** | `booking-status` | Handles GET /booking/{id}: reads DynamoDB, returns booking row; timeout 30 s |
-| **Lambda** | `fake-svc-seat-reservation` | Fake service #1 — invoked directly by Step Functions; returns reservationId or throws error; timeout 30 s |
-| **Lambda** | `fake-svc-payment` | Fake service #2 — triggered by SQS (batchSize=1); processes payment, calls SendTaskSuccess/Failure; timeout 30 s |
-| **Lambda** | `fake-svc-ticket-generation` | Fake service #3 — invoked directly by Step Functions with 3 retries; returns ticketId; timeout 30 s |
+| Service         | Name / Instance              | Purpose                                                                                                                                                                   |
+| --------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API Gateway** | `booking-api` (HTTP API)     | Public HTTPS entry point; routes PUT /ticket and GET /booking/{id}; requires `x-api-key` header on all routes; per-route throttling via Usage Plan (see Design Decisions) |
+| **Lambda**      | `booking-initiator`          | Handles PUT /ticket: writes DynamoDB, starts Step Functions, returns 202; timeout 30 s                                                                                    |
+| **Lambda**      | `booking-status`             | Handles GET /booking/{id}: reads DynamoDB, returns booking row; timeout 30 s                                                                                              |
+| **Lambda**      | `fake-svc-seat-reservation`  | Fake service #1 — invoked directly by Step Functions; returns reservationId or throws error; timeout 30 s                                                                 |
+| **Lambda**      | `fake-svc-payment`           | Fake service #2 — triggered by SQS (batchSize=1); processes payment, calls SendTaskSuccess/Failure; timeout 30 s                                                          |
+| **Lambda**      | `fake-svc-ticket-generation` | Fake service #3 — invoked directly by Step Functions with 3 retries; returns ticketId; timeout 30 s                                                                       |
 
 > No Lambda intermediary is needed to send messages to SQS or to update DynamoDB.
 > Both are handled via Step Functions' native SDK integrations (see Design Decisions).
@@ -37,50 +37,50 @@ on AWS. The core business logic and the separation of the three fake services ar
 To prevent pool exhaustion and noisy-neighbour throttling, each function carries an explicit
 reserved concurrency allocation from the account default of 1,000 concurrent executions.
 
-| Lambda | Reserved Concurrency | Rationale |
-|---|---|---|
-| `booking-initiator` | 100 | User-facing write path |
-| `booking-status` | 200 | Highest-traffic path (status polling) |
-| `fake-svc-seat-reservation` | 50 | Step Functions–invoked; cold start is absorbed by workflow latency |
-| `fake-svc-payment` | 50 | SQS-driven; concurrency bounded by queue batch size |
-| `fake-svc-ticket-generation` | 50 | Step Functions–invoked; tolerates cold start |
-| **Unreserved pool** | **550** | Headroom for burst and any other account functions |
+| Lambda                       | Reserved Concurrency | Rationale                                                          |
+| ---------------------------- | -------------------- | ------------------------------------------------------------------ |
+| `booking-initiator`          | 100                  | User-facing write path                                             |
+| `booking-status`             | 200                  | Highest-traffic path (status polling)                              |
+| `fake-svc-seat-reservation`  | 50                   | Step Functions–invoked; cold start is absorbed by workflow latency |
+| `fake-svc-payment`           | 50                   | SQS-driven; concurrency bounded by queue batch size                |
+| `fake-svc-ticket-generation` | 50                   | Step Functions–invoked; tolerates cold start                       |
+| **Unreserved pool**          | **550**              | Headroom for burst and any other account functions                 |
 
 > All values are CDK context parameters (`lambdaConcurrency.*`) and can be tuned without code changes.
 
 ### Workflow Orchestration
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
+| Service            | Name / Instance               | Purpose                                                                                            |
+| ------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------- |
 | **Step Functions** | `booking-workflow` (Standard) | Orchestrates the full booking saga: seat reservation → payment → ticket generation → status update |
 
 ### Storage
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **DynamoDB** | `bookings` | Stores `(bookingReferenceId, status, ticketId)` tuples; on-demand capacity mode; encrypted with AWS-managed key (`aws/dynamodb`) |
+| Service      | Name / Instance | Purpose                                                                                                                          |
+| ------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **DynamoDB** | `bookings`      | Stores `(bookingReferenceId, status, ticketId)` tuples; on-demand capacity mode; encrypted with AWS-managed key (`aws/dynamodb`) |
 
 ### Messaging
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
+| Service | Name / Instance         | Purpose                                                                                                                                          |
+| ------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SQS** | `payment-request-queue` | Receives payment requests from Step Functions (with embedded task token); visibility timeout 180 s (6 × Lambda timeout); message retention 1 day |
-| **SQS** | `payment-request-dlq` | Dead-letter queue; `maxReceiveCount = 3`; message retention 14 days |
+| **SQS** | `payment-request-dlq`   | Dead-letter queue; `maxReceiveCount = 3`; message retention 14 days                                                                              |
 
 ### Networking
 
-| Service | Name / Instance | Notes |
-|---|---|---|
-| **VPC** | `booking-vpc` (10.0.0.0/16) | Network isolation boundary for all compute |
-| **Private Subnet** | `private-subnet-a` (10.0.2.0/24) | AZ us-east-1a — Lambda ENIs; hosts Interface Endpoint ENIs |
-| **Private Subnet** | `private-subnet-b` (10.0.3.0/24) | AZ us-east-1b — Lambda ENIs |
-| **Security Group** | `lambda-sg` | Allows outbound to VPC endpoints only; no inbound |
-| **Security Group** | `vpce-sg` | Allows inbound 443 from `lambda-sg` only |
-| **VPC Endpoint** | `ddb-gateway-endpoint` (Gateway, free) | Private DynamoDB access from Lambda; no data transfer charges |
-| **VPC Endpoint** | `sqs-interface-endpoint` (Interface, AZ-a only) | Private SQS access from Lambda |
-| **VPC Endpoint** | `sfn-interface-endpoint` (Interface, AZ-a only) | Private Step Functions access from Lambda (initiator, payment) |
-| **VPC Endpoint** | `cwlogs-interface-endpoint` (Interface, AZ-a only) | Private CloudWatch Logs access from Lambda |
-| **Route Table** | `private-rt-a`, `private-rt-b` | DynamoDB prefix → Gateway Endpoint; no default route needed — all AWS API calls stay within the VPC via Interface Endpoints |
+| Service            | Name / Instance                                    | Notes                                                                                                                       |
+| ------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **VPC**            | `booking-vpc` (10.0.0.0/16)                        | Network isolation boundary for all compute                                                                                  |
+| **Private Subnet** | `private-subnet-a` (10.0.2.0/24)                   | AZ us-east-1a — Lambda ENIs; hosts Interface Endpoint ENIs                                                                  |
+| **Private Subnet** | `private-subnet-b` (10.0.3.0/24)                   | AZ us-east-1b — Lambda ENIs                                                                                                 |
+| **Security Group** | `lambda-sg`                                        | Allows outbound to VPC endpoints only; no inbound                                                                           |
+| **Security Group** | `vpce-sg`                                          | Allows inbound 443 from `lambda-sg` only                                                                                    |
+| **VPC Endpoint**   | `ddb-gateway-endpoint` (Gateway, free)             | Private DynamoDB access from Lambda; no data transfer charges                                                               |
+| **VPC Endpoint**   | `sqs-interface-endpoint` (Interface, AZ-a only)    | Private SQS access from Lambda                                                                                              |
+| **VPC Endpoint**   | `sfn-interface-endpoint` (Interface, AZ-a only)    | Private Step Functions access from Lambda (initiator, payment)                                                              |
+| **VPC Endpoint**   | `cwlogs-interface-endpoint` (Interface, AZ-a only) | Private CloudWatch Logs access from Lambda                                                                                  |
+| **Route Table**    | `private-rt-a`, `private-rt-b`                     | DynamoDB prefix → Gateway Endpoint; no default route needed — all AWS API calls stay within the VPC via Interface Endpoints |
 
 > **Cost note:** Gateway endpoints (DynamoDB) are free. Interface endpoints (PrivateLink) cost ~$0.01/hr per AZ.
 > With 3 Interface Endpoints in a single AZ ≈ **$22/month**. Expanding to 2 AZs doubles this cost and is described
@@ -88,46 +88,46 @@ reserved concurrency allocation from the account default of 1,000 concurrent exe
 
 ### Security & Identity
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **IAM Role** | `booking-initiator-role` | `dynamodb:PutItem`, `dynamodb:UpdateItem` on bookings table; `states:StartExecution` on booking-workflow; VPC attachment (`ec2:CreateNetworkInterface`, `ec2:DescribeNetworkInterfaces`, `ec2:DeleteNetworkInterface`); CloudWatch Logs |
-| **IAM Role** | `booking-status-role` | `dynamodb:GetItem` on bookings table; VPC attachment; CloudWatch Logs |
-| **IAM Role** | `fake-svc-seat-reservation-role` | VPC attachment; CloudWatch Logs |
-| **IAM Role** | `fake-svc-payment-role` | `states:SendTaskSuccess`, `states:SendTaskFailure` scoped to booking-workflow ARN; VPC attachment; CloudWatch Logs |
-| **IAM Role** | `fake-svc-ticket-generation-role` | VPC attachment; CloudWatch Logs |
-| **IAM Role** | `step-functions-execution-role` | `lambda:InvokeFunction` scoped to `arn:aws:lambda:us-east-1:*:function:fake-svc-*`; `sqs:SendMessage` scoped to payment-request-queue ARN; `dynamodb:UpdateItem` scoped to bookings table ARN |
-| **AWS WAF** | `booking-waf` (Regional Web ACL) | Rate-based rule on PUT /ticket (per-IP, configurable count/window); associated directly with API Gateway stage |
-| **API Gateway Usage Plan** | `booking-usage-plan` | Issues API keys (`x-api-key` header required on all routes); per-route throttling: PUT /ticket 10 RPS steady / 50 RPS burst; GET /booking 50 RPS steady / 100 RPS burst |
+| Service                    | Name / Instance                   | Purpose                                                                                                                                                                                                                                 |
+| -------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **IAM Role**               | `booking-initiator-role`          | `dynamodb:PutItem`, `dynamodb:UpdateItem` on bookings table; `states:StartExecution` on booking-workflow; VPC attachment (`ec2:CreateNetworkInterface`, `ec2:DescribeNetworkInterfaces`, `ec2:DeleteNetworkInterface`); CloudWatch Logs |
+| **IAM Role**               | `booking-status-role`             | `dynamodb:GetItem` on bookings table; VPC attachment; CloudWatch Logs                                                                                                                                                                   |
+| **IAM Role**               | `fake-svc-seat-reservation-role`  | VPC attachment; CloudWatch Logs                                                                                                                                                                                                         |
+| **IAM Role**               | `fake-svc-payment-role`           | `states:SendTaskSuccess`, `states:SendTaskFailure` scoped to booking-workflow ARN; VPC attachment; CloudWatch Logs                                                                                                                      |
+| **IAM Role**               | `fake-svc-ticket-generation-role` | VPC attachment; CloudWatch Logs                                                                                                                                                                                                         |
+| **IAM Role**               | `step-functions-execution-role`   | `lambda:InvokeFunction` scoped to `arn:aws:lambda:us-east-1:*:function:fake-svc-*`; `sqs:SendMessage` scoped to payment-request-queue ARN; `dynamodb:UpdateItem` scoped to bookings table ARN                                           |
+| **AWS WAF**                | `booking-waf` (Regional Web ACL)  | Rate-based rule on PUT /ticket (per-IP, configurable count/window); associated directly with API Gateway stage                                                                                                                          |
+| **API Gateway Usage Plan** | `booking-usage-plan`              | Issues API keys (`x-api-key` header required on all routes); per-route throttling: PUT /ticket 10 RPS steady / 50 RPS burst; GET /booking 50 RPS steady / 100 RPS burst                                                                 |
 
 ### Monitoring & Observability
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **CloudWatch Dashboard** | `BookingSystem` | Unified view: Lambda errors/duration, Step Functions execution rate, SQS depth, DynamoDB throttles |
-| **CloudWatch Log Group** | `/aws/lambda/booking-initiator` | Lambda logs |
-| **CloudWatch Log Group** | `/aws/lambda/booking-status` | Lambda logs |
-| **CloudWatch Log Group** | `/aws/lambda/fake-svc-*` (×3) | Lambda logs for each fake service |
-| **CloudWatch Log Group** | `/aws/states/booking-workflow` | Step Functions execution logs (ALL level) |
-| **CloudWatch Alarm** | `booking-error-rate` | Triggers when Lambda 5xx rate > 5% over 5 minutes |
-| **CloudWatch Alarm** | `payment-dlq-depth` | Triggers when DLQ message count > 0 |
-| **CloudWatch Alarm** | `sfn-execution-failures` | Triggers when Step Functions failure count > threshold |
-| **CloudWatch Alarm** | `api-latency-p99` | Triggers when API Gateway P99 latency > 3s |
-| **AWS X-Ray** | Service map | End-to-end distributed tracing across API Gateway → Lambda → Step Functions → fake services |
-| **SNS Topic** | `booking-alerts` | Receives alarm notifications; routes to email or Slack (via Chatbot) |
+| Service                  | Name / Instance                 | Purpose                                                                                            |
+| ------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **CloudWatch Dashboard** | `BookingSystem`                 | Unified view: Lambda errors/duration, Step Functions execution rate, SQS depth, DynamoDB throttles |
+| **CloudWatch Log Group** | `/aws/lambda/booking-initiator` | Lambda logs                                                                                        |
+| **CloudWatch Log Group** | `/aws/lambda/booking-status`    | Lambda logs                                                                                        |
+| **CloudWatch Log Group** | `/aws/lambda/fake-svc-*` (×3)   | Lambda logs for each fake service                                                                  |
+| **CloudWatch Log Group** | `/aws/states/booking-workflow`  | Step Functions execution logs (ALL level)                                                          |
+| **CloudWatch Alarm**     | `booking-error-rate`            | Triggers when Lambda 5xx rate > 5% over 5 minutes                                                  |
+| **CloudWatch Alarm**     | `payment-dlq-depth`             | Triggers when DLQ message count > 0                                                                |
+| **CloudWatch Alarm**     | `sfn-execution-failures`        | Triggers when Step Functions failure count > threshold                                             |
+| **CloudWatch Alarm**     | `api-latency-p99`               | Triggers when API Gateway P99 latency > 3s                                                         |
+| **AWS X-Ray**            | Service map                     | End-to-end distributed tracing across API Gateway → Lambda → Step Functions → fake services        |
+| **SNS Topic**            | `booking-alerts`                | Receives alarm notifications; routes to email or Slack (via Chatbot)                               |
 
 ### CI/CD & Infrastructure as Code
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **AWS CDK** | TypeScript project | Defines all infrastructure as code; deployed via CI/CD |
-| **GitHub Actions** | `.github/workflows/deploy.yml` | Build → test → CDK diff → CDK deploy on push to main |
+| Service            | Name / Instance                | Purpose                                                |
+| ------------------ | ------------------------------ | ------------------------------------------------------ |
+| **AWS CDK**        | TypeScript project             | Defines all infrastructure as code; deployed via CI/CD |
+| **GitHub Actions** | `.github/workflows/deploy.yml` | Build → test → CDK diff → CDK deploy on push to main   |
 
 ### Cost Management
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **AWS Budgets** | `monthly-budget` | Alert when monthly spend exceeds threshold |
-| **AWS Cost Explorer** | — | Per-service cost breakdown and trend analysis |
+| Service               | Name / Instance  | Purpose                                       |
+| --------------------- | ---------------- | --------------------------------------------- |
+| **AWS Budgets**       | `monthly-budget` | Alert when monthly spend exceeds threshold    |
+| **AWS Cost Explorer** | —                | Per-service cost breakdown and trend analysis |
 
 ---
 
@@ -186,6 +186,7 @@ VPC's SQS Interface Endpoint. The Interface Endpoint exists to serve Lambda func
 inside the VPC that need to call SQS APIs directly from their code.
 
 **Why no Lambda intermediary:**
+
 - Eliminates a cold start and Lambda cost on every booking
 - No custom code to maintain for a pure "forward the message" operation
 - The task token arrives at the payment Lambda via the SQS message — it is already there
@@ -203,6 +204,7 @@ provide exactly-once execution semantics — critical for financial operations �
 ### Lambda in Private VPC Subnets
 
 Lambdas are placed in private subnets to enable:
+
 - Security group rules restricting egress to only required VPC endpoints
 - Network-level isolation as a defense-in-depth layer (IAM remains the primary security boundary)
 - Future VPC resources (e.g., RDS) without architecture rework
@@ -238,14 +240,14 @@ const timeout = Math.min(context.paymentTimeoutSeconds ?? 60, 300);
 When the timeout expires, Step Functions raises a `States.TaskFailed` error that is caught
 by the existing failure branch and routes to `[Update Booking: FAILED]`.
 
-| Parameter | Value |
-|---|---|
-| Lambda timeout | 30 s |
-| SQS visibility timeout | 180 s (6 × Lambda timeout) |
-| Event source mapping batchSize | 1 |
-| maxReceiveCount (→ DLQ) | 3 |
-| Main queue message retention | 1 day |
-| DLQ message retention | 14 days |
+| Parameter                      | Value                      |
+| ------------------------------ | -------------------------- |
+| Lambda timeout                 | 30 s                       |
+| SQS visibility timeout         | 180 s (6 × Lambda timeout) |
+| Event source mapping batchSize | 1                          |
+| maxReceiveCount (→ DLQ)        | 3                          |
+| Main queue message retention   | 1 day                      |
+| DLQ message retention          | 14 days                    |
 
 > `HeartbeatSeconds` is omitted — the payment Lambda is expected to call `SendTaskSuccess` or
 > `SendTaskFailure` in a single synchronous operation and does not stream heartbeats.
@@ -256,17 +258,18 @@ by the existing failure branch and routes to `[Update Booking: FAILED]`.
 environment. The cache key is `bookingReferenceId`; the TTL depends on the status value
 returned from DynamoDB:
 
-| Status | Cache TTL | Rationale |
-|---|---|---|
-| `IN_PROGRESS` | 3 s | Workflow completes in seconds; stale data would mislead the client |
-| `CONFIRMED` | 60 s | Terminal state; value never changes |
-| `FAILED` | 60 s | Terminal state; value never changes |
+| Status        | Cache TTL | Rationale                                                          |
+| ------------- | --------- | ------------------------------------------------------------------ |
+| `IN_PROGRESS` | 3 s       | Workflow completes in seconds; stale data would mislead the client |
+| `CONFIRMED`   | 60 s      | Terminal state; value never changes                                |
+| `FAILED`      | 60 s      | Terminal state; value never changes                                |
 
 Cache entries are stored as `{ value, expiresAt }` tuples in a module-scope `Map`. On each
 invocation the function checks the cache before calling DynamoDB; a miss or expired entry
 triggers a fresh `GetItem` and repopulates the cache.
 
 **Trade-offs:**
+
 - Each warm execution environment maintains its own cache. Under high concurrency, multiple
   environments may each perform one DynamoDB read per TTL window. This is still a substantial
   reduction in DynamoDB reads and eliminates redundant round-trips within a single container.
@@ -282,10 +285,10 @@ a valid key are rejected by API Gateway with `403 Forbidden` before reaching Lam
 The Usage Plan enforces **per-route throttling** as a cost-free guard against accidental
 over-use and enumeration:
 
-| Route | Steady-state RPS | Burst RPS |
-|---|---|---|
-| `PUT /ticket` | 10 | 50 |
-| `GET /booking/{id}` | 50 | 100 |
+| Route               | Steady-state RPS | Burst RPS |
+| ------------------- | ---------------- | --------- |
+| `PUT /ticket`       | 10               | 50        |
+| `GET /booking/{id}` | 50               | 100       |
 
 API key auth is intentionally lightweight — it provides client identity and a throttle
 boundary suitable for a course assignment. For production use, Cognito or IAM-based
@@ -314,10 +317,10 @@ before reaching API Gateway or Lambda.
 
 **Configuration** (CDK context):
 
-| Parameter | Default | Description |
-|---|---|---|
-| `enablePutRateLimit` | `true` | Set to `false` to disable the WAF rule (e.g., for stress tests) |
-| `putRateLimitCount` | `60` | Max requests per IP per 5-minute window |
+| Parameter            | Default | Description                                                     |
+| -------------------- | ------- | --------------------------------------------------------------- |
+| `enablePutRateLimit` | `true`  | Set to `false` to disable the WAF rule (e.g., for stress tests) |
+| `putRateLimitCount`  | `60`    | Max requests per IP per 5-minute window                         |
 
 When `enablePutRateLimit` is `false`, the WAF Web ACL remains attached to API Gateway but the
 rate-based rule is removed, allowing unlimited throughput from any IP.

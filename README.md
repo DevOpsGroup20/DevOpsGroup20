@@ -1,7 +1,9 @@
 # DevOpsGroup20
+
 DevOps and Cloud-based software. 2026. University of Amsterdam. Group 20.
 
 #### Project Team
+
 - Bjorgvin Atli Juliusson (bjorgvin.juliusson@student.uva.nl)
 - Kacper Machaj (kacper.machaj@student.uva.nl)
 - Hubert Mazur (hubert.mazur@student.uva.nl)
@@ -20,6 +22,7 @@ This project involves migrating a ticket booking system from **Camunda Cloud (or
 ### 1. Core Logic (Must Preserve)
 
 #### Three-Step Booking Workflow
+
 The system must execute three sequential steps to complete a booking:
 
 1. **Reserve Seats** - Check availability and reserve the requested seats
@@ -29,6 +32,7 @@ The system must execute three sequential steps to complete a booking:
 Each step must complete successfully before proceeding to the next.
 
 #### Compensation Logic (Saga Pattern)
+
 If any step fails, the system must gracefully fail and conclude the booking process.
 
 - **Payment fails/times out** → Release reserved seats.
@@ -38,17 +42,21 @@ If any step fails, the system must gracefully fail and conclude the booking proc
 This ensures no partial bookings exist in the system.
 
 #### Timeout Enforcement
+
 - Payment processing **must complete within 30 seconds**
 - If timeout occurs, seats must be automatically released
 - Other steps have no explicit timeout requirements
 
 #### Retry Logic
+
 - **Seat reservation** → Fail immediately, no retries
 - **Payment processing** → No retries, enforce 30-second timeout
 - **Ticket generation** → Multiple retry attempts with exponential backoff
 
 #### Failure Simulation
+
 The system must support simulated failures for testing:
+
 - `simulateBookingFailure=seats` → Force seat reservation to fail
 - `simulateBookingFailure=payment` → Force payment to fail/timeout
 - `simulateBookingFailure=ticket` → Force ticket generation to fail
@@ -60,9 +68,11 @@ This allows testing of compensation logic without external dependencies.
 ### 2. API Requirements
 
 #### Create Booking Endpoint
+
 **Endpoint:** `PUT /ticket`
 
 **Behavior:**
+
 - Accept booking requests (with optional failure simulation parameter)
 - Generate a unique `bookingReferenceId`
 - Store initial booking record in database with status `PENDING`
@@ -71,25 +81,31 @@ This allows testing of compensation logic without external dependencies.
 - Do not block waiting for workflow completion
 
 **Query Parameters:**
+
 - `simulateBookingFailure` (string, optional) - Simulate failure at specific step: `"seats"`, `"payment"`, or `"ticket"`
 
 **Response:**
 `202 Accepted`
+
 ```json
 {
   "bookingReferenceId": "uuid-string"
 }
 ```
+
 If seat reservation later fails (`simulateBookingFailure=seats` or no capacity), the booking ends as `FAILED` and can be observed via `GET /booking/{bookingReferenceId}`.
 
 #### Get Booking Status Endpoint
+
 **Endpoint:** `GET /booking/{bookingReferenceId}`
 
 **Behavior:**
+
 - Query the database for the booking record
 - Return booking status and any completed step data
 
 **Response:**
+
 ```json
 {
   "bookingReferenceId": "uuid",
@@ -105,6 +121,7 @@ If seat reservation later fails (`simulateBookingFailure=seats` or no capacity),
 ### 3. Workflow Orchestration
 
 The system must:
+
 - **Orchestrate** the three-step workflow (Check Availability → Pay → Ticket)
 - **Coordinate** compensation logic when failures occur
 - **Track** workflow state and execution history
@@ -121,6 +138,7 @@ In the current system, Camunda/Zeebe handles this orchestration. In the new syst
 Since this is a demonstration system, the three service implementations are **fake/mock services**:
 
 #### Reserve Seats Service
+
 - Reads `SEAT_CAPACITY_TABLE_NAME` from environment
 - If `simulateBookingFailure=seats`, throws before any seat decrement
 - Atomically decrements `availableSeats` with a conditional DynamoDB update (`availableSeats >= 1`)
@@ -129,6 +147,7 @@ Since this is a demonstration system, the three service implementations are **fa
 - Booking record is updated by the Step Functions `Add reservationId` state
 
 #### Payment Service
+
 - Simulate payment processing with 2-second delay
 - Generate fake `paymentConfirmationId`
 - Update booking record in database with `paymentConfirmationId`
@@ -136,6 +155,7 @@ Since this is a demonstration system, the three service implementations are **fa
 - No actual payment gateway integration required
 
 #### Ticket Generation Service
+
 - Simulate ticket creation
 - Generate fake `ticketId` or ticket URL
 - Update booking record in database with `ticketId`
@@ -153,6 +173,7 @@ The system must maintain booking state and seat availability in a database:
 #### Database Schema
 
 **Bookings Table** stores:
+
 - `bookingReferenceId` (primary key, UUID) - Generated on initial PUT request
 - `status` (string) - Current workflow state: `PENDING`, `COMPLETED`, `FAILED`
 - `reservationId` (string, nullable) - Set after successful seat reservation
@@ -162,18 +183,20 @@ The system must maintain booking state and seat availability in a database:
 - `updatedAt` (timestamp) - Last status update
 
 **SeatCapacity Table** stores:
+
 - `id` (primary key, string) - Fixed value (e.g., "CAPACITY")
 - `totalSeats` (number) - Seeded for local E2E testing
 - `availableSeats` (number) - Current remaining capacity
 
-
 #### Database Technology
+
 - Use **Amazon DynamoDB** for serverless, scalable storage
 - Single-table design for Bookings with `bookingReferenceId` as partition key
 - Single-row table for SeatCapacity with atomic updates for concurrency safety
 - No complex queries or relational logic required
 
 #### Update Pattern
+
 - Lambda functions update the database after each successful step
 - Step Functions triggers status updates via Lambda
 - Database serves as source of truth for booking state
@@ -188,23 +211,27 @@ The system must maintain booking state and seat availability in a database:
 The system must provide:
 
 #### Distributed Tracing
+
 - Trace requests across all Lambda functions
 - Visualize the complete workflow execution path
 - Identify bottlenecks and failures
 - Use **AWS X-Ray** for distributed tracing
 
 #### Structured Logging
+
 - Log all workflow events in JSON format
 - Include context (bookingId, step name, timestamps)
 - Use **CloudWatch Logs** for centralized logging
 
 #### Metrics & Dashboards
+
 - Track success rates, failure rates, latency
 - Monitor timeout occurrences and retry attempts
 - Create dashboards showing request rate, errors, and performance
 - Use **CloudWatch Metrics & Dashboards**
 
 #### Alerting
+
 - Alert on error rate thresholds
 - Alert on latency degradation
 - Use **CloudWatch Alarms** with appropriate thresholds
@@ -225,6 +252,7 @@ All infrastructure must be defined and deployed using **CloudFormation**:
 - X-Ray tracing configuration
 
 The infrastructure should be:
+
 - **Repeatable** - Can be deployed multiple times without manual intervention
 - **Version controlled** - All infrastructure code in Git
 
@@ -235,6 +263,7 @@ The infrastructure should be:
 The project must include an automated CI/CD pipeline to ensure repeatable, reliable deployments.
 
 #### Pipeline Stages
+
 The pipeline will run on every push to the main branch and on pull requests:
 
 1. **Lint & Static Analysis** - Check code style and quality
@@ -245,12 +274,14 @@ The pipeline will run on every push to the main branch and on pull requests:
 6. **Deploy (Production)** - Deploy to production on successful merge to main
 
 #### Tooling
+
 - **GitHub Actions** for CI/CD pipeline automation
 - **AWS CloudFormation** for infrastructure deployment (`aws cloudformation deploy`)
 - **AWS SAM or raw CloudFormation** for packaging and deploying Lambda functions
 - For future cloud deployment: use GitHub Actions OIDC integration with AWS IAM (no long-lived secrets stored in GitHub)
 
 #### Implemented E2E Workflow Pipeline
+
 - Workflow file: `.github/workflows/booking-workflow-e2e-localstack.yml`
 - Coverage:
   - Happy path
@@ -276,9 +307,11 @@ The pipeline will run on every push to the main branch and on pull requests:
 - Minimal runbook: `docs/localstack-e2e.md`
 
 #### Branch Strategy
+
 - TODO: define branching strategy (e.g., trunk-based development vs. feature branches)
 
 #### Rollback Strategy
+
 - TODO: define rollback strategy (e.g., CloudFormation stack rollback on failure, Lambda versioning/aliases)
 
 ---
@@ -311,14 +344,15 @@ Load testing will be performed to validate that the system sustains **150 reques
 
 **Test Scenarios:**
 
-| Scenario | Description | Target RPS | Success Criteria |
-|----------|-------------|------------|-----------------|
-| Steady-state load | Sustained 150 RPS for 5 minutes, happy path only | 150 | <1% error rate, p99 latency <3s |
-| Ramp-up load | Gradually increase from 0 to 150 RPS over 2 minutes | 0→150 | No errors during ramp-up, system stabilizes |
-| Failure simulation load | 150 RPS with mixed failure simulations | 150 | Compensation logic executes correctly, no partial bookings |
-| Spike test | Sudden burst to 300 RPS for 30 seconds | 300 | System recovers, no permanent errors |
+| Scenario                | Description                                         | Target RPS | Success Criteria                                           |
+| ----------------------- | --------------------------------------------------- | ---------- | ---------------------------------------------------------- |
+| Steady-state load       | Sustained 150 RPS for 5 minutes, happy path only    | 150        | <1% error rate, p99 latency <3s                            |
+| Ramp-up load            | Gradually increase from 0 to 150 RPS over 2 minutes | 0→150      | No errors during ramp-up, system stabilizes                |
+| Failure simulation load | 150 RPS with mixed failure simulations              | 150        | Compensation logic executes correctly, no partial bookings |
+| Spike test              | Sudden burst to 300 RPS for 30 seconds              | 300        | System recovers, no permanent errors                       |
 
 **Metrics to collect during load tests:**
+
 - API Gateway p50/p95/p99 latency
 - Lambda concurrency (peak and average)
 - Lambda error rate and throttle count
@@ -337,15 +371,15 @@ TODO: provide a structured cost breakdown estimating monthly cost at expected lo
 
 Migrate from current stack to serverless AWS:
 
-| Current | New (Serverless) |
-|---------|------------------|
-| Camunda Cloud (Zeebe) | AWS Step Functions |
-| Java Spring Boot REST API | AWS API Gateway + Lambda |
-| Node.js Zeebe workers | AWS Lambda (Node.js) |
-| RabbitMQ (AMQP) | AWS SQS |
-| Zeebe gRPC | Direct Lambda invocation |
-| Camunda workflow engine | Step Functions state machine |
-| N/A | Amazon DynamoDB |
+| Current                   | New (Serverless)             |
+| ------------------------- | ---------------------------- |
+| Camunda Cloud (Zeebe)     | AWS Step Functions           |
+| Java Spring Boot REST API | AWS API Gateway + Lambda     |
+| Node.js Zeebe workers     | AWS Lambda (Node.js)         |
+| RabbitMQ (AMQP)           | AWS SQS                      |
+| Zeebe gRPC                | Direct Lambda invocation     |
+| Camunda workflow engine   | Step Functions state machine |
+| N/A                       | Amazon DynamoDB              |
 
 ---
 
@@ -354,6 +388,7 @@ Migrate from current stack to serverless AWS:
 ### Real Service Implementations
 
 **We are NOT building:**
+
 - Actual seat inventory management system
 - Real payment gateway integration (Stripe, PayPal, etc.)
 - Actual PDF ticket generation
@@ -363,6 +398,7 @@ Migrate from current stack to serverless AWS:
 - Ticket delivery mechanisms
 
 **We ARE building:**
+
 - Simple booking state persistence (DynamoDB)
 - Basic seat availability logic
 - Basic booking record storage with IDs and status
@@ -374,6 +410,7 @@ Migrate from current stack to serverless AWS:
 The project is successful if:
 
 **Workflow orchestration works correctly:**
+
 - Three steps execute in sequence
 - Timeouts are enforced (30s for payment)
 - Retries work (ticket generation)
@@ -381,35 +418,41 @@ The project is successful if:
 - Database is updated at each step
 
 **Scalability**
+
 - 150 requests to book tickets per second
 - System remains responsive under load
 - No timeouts or errors occur - unless failure is being simulated
 - Load tests confirm autoscaling behavior and validate that Lambda concurrency limits are not breached
 
 **CI/CD pipeline is functional:**
+
 - Every push triggers automated lint, test, and build stages
 - Deployments to staging and production are fully automated via GitHub Actions
 - No manual steps required to deploy infrastructure or code
 - AWS credentials are managed securely via OIDC (no stored secrets)
 
 **API is functional:**
+
 - `PUT /ticket` returns 202 with bookingId and creates database record
 - `GET /booking/{id}` returns current status from database
 - Failure simulation works as expected
 
 **Data persistence works:**
+
 - Booking records are created on PUT
 - Status and IDs are updated as workflow progresses
 - Seat capacity is tracked and updated atomically
 - GET endpoint returns accurate data from database
 
 **Observability is in place:**
+
 - X-Ray traces show complete workflow
 - CloudWatch logs capture all events
 - Dashboard shows key metrics
 - Alarms trigger on error conditions
 
 **Infrastructure is reproducible:**
+
 - CloudFormation deploys entire stack (including DynamoDB tables)
 - No manual configuration required
 - Can tear down and redeploy
@@ -421,11 +464,13 @@ The project is successful if:
 ## Non-Goals
 
 **This project is not about:**
+
 - Building a production-ready ticket booking system
 - Complex database design or query optimization
 - Data migration or backup strategies
 
 **This project is about:**
+
 - Demonstrating serverless workflow orchestration
 - Showing how to migrate from managed orchestration to serverless
 - Proving cost savings of serverless architecture
@@ -439,7 +484,8 @@ The project is successful if:
 
 **In one sentence:** Migrate the ticket booking workflow from Camunda Cloud to AWS serverless (Step Functions + Lambda + DynamoDB), preserving the three-step saga pattern with compensation logic, storing booking state and IDs in a database with simple seat capacity tracking, while keeping service logic mocked and infrastructure simple.
 
-----
+---
 
 ## High Level Architecture Diagram
+
 ![High Level Architecture Diagram](architecture/architecture_diagram.svg)

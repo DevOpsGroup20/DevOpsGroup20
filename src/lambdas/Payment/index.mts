@@ -1,10 +1,6 @@
 import { SQSHandler } from "aws-lambda";
 import { randomUUID } from "crypto";
-import {
-  SendTaskFailureCommand,
-  SendTaskSuccessCommand,
-  SFNClient,
-} from "@aws-sdk/client-sfn";
+import { SendTaskFailureCommand, SendTaskSuccessCommand, SFNClient } from "@aws-sdk/client-sfn";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 
 type BookingEvent = Record<string, unknown> & {
