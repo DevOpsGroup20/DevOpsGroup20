@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build": "tsc && cp src/index.html src/style.css src/env.js.template dist/"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

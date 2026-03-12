@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket Booking Demo — AWS Migration</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="env.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-title">
+        <h1>Ticket Booking System</h1>
+        <span class="subtitle">AWS Serverless Migration Demo</span>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-aws">AWS</span>
+        <span class="badge badge-serverless">Serverless</span>
+        <span class="badge badge-group">Group 20</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card controls-card">
+      <div class="controls-row">
+
+        <!-- Failure toggle -->
+        <div class="config-field">
+          <label class="field-label">Failure</label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="failure-enabled" />
+            <span>Simulate</span>
+          </label>
+        </div>
+
+        <!-- Poll config -->
+        <div class="config-field">
+          <label class="field-label" for="initial-delay">Initial Poll Delay (ms)</label>
+          <input type="number" id="initial-delay" value="50" min="0" max="5000" />
+        </div>
+        <div class="config-field">
+          <label class="field-label" for="poll-interval">Poll Interval (ms)</label>
+          <input type="number" id="poll-interval" value="25" min="10" max="5000" />
+        </div>
+
+        <!-- Batch size buttons -->
+        <div class="config-field">
+          <label class="field-label">Batch Size</label>
+          <div class="size-buttons">
+            <button class="btn-size active" data-size="1">×1</button>
+            <button class="btn-size" data-size="25">×25</button>
+            <button class="btn-size" data-size="100">×100</button>
+          </div>
+        </div>
+
+        <div class="controls-buttons">
+          <button id="btn-go" class="btn-primary">Book</button>
+        </div>
+      </div>
+
+      <!-- Failure sub-panel -->
+      <div id="failure-panel" class="failure-panel hidden">
+        <div class="failure-modes">
+          <div class="failure-mode-row">
+            <input type="radio" name="failure-mode" id="failure-force-radio" value="force" checked />
+            <label for="failure-force-radio">Force</label>
+            <select id="failure-force-select">
+              <option value="seats">Seats</option>
+              <option value="payment">Payment</option>
+              <option value="ticket">Ticket</option>
+            </select>
+          </div>
+          <div class="failure-mode-row">
+            <input type="radio" name="failure-mode" id="failure-prob-radio" value="probability" />
+            <label for="failure-prob-radio">Probability</label>
+            <span class="muted-note">(per-request random, best for bursts)</span>
+          </div>
+        </div>
+        <div id="prob-panel" class="prob-panel hidden">
+          <div id="prob-slider" class="prob-slider"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="entries" class="entries"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
