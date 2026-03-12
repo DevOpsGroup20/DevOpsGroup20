@@ -1,0 +1,59 @@
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/booking-workflow-failure-injection.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1500 max VUs, 1m30s max duration (incl. graceful stop):
+              * booking_failures_constant_rate: 150.00 iterations/s for 1m0s (maxVUs: 300-1500, gracefulStop: 30s)
+
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 9000    149.299561/s
+    checks_succeeded...: 100.00% 9000 out of 9000
+    checks_failed......: 0.00%   0 out of 9000
+
+    ✓ PUT /ticket accepted
+
+    CUSTOM
+    booking_completion_latency.................: min=28ms    avg=265.04ms med=264ms    p(90)=274ms    p(95)=280ms    p(99)=328.53ms max=504ms   
+    booking_failed_rate........................: 30.84%  2776 out of 9000
+    bookings_completed.........................: 6224    103.248941/s
+    bookings_failed............................: 2776    46.05062/s
+    bookings_started...........................: 9000    149.299561/s
+    injected_failure_observed_as_failed_rate...: 100.00% 2776 out of 2776
+    injected_failure_rate......................: 30.84%  2776 out of 9000
+    injected_failures..........................: 2776    46.05062/s
+    injected_payment_failures..................: 902     14.963134/s
+    injected_seat_failures.....................: 900     14.929956/s
+    injected_ticket_failures...................: 974     16.15753/s
+    non_injected_observed_as_completed_rate....: 100.00% 6224 out of 6224
+
+    HTTP
+    http_req_duration..........................: min=20.68ms avg=33.11ms  med=30.89ms  p(90)=37.99ms  p(95)=44.23ms  p(99)=92.19ms  max=330.57ms
+      { expected_response:true }...............: min=20.68ms avg=33.11ms  med=30.89ms  p(90)=37.99ms  p(95)=44.25ms  p(99)=92.14ms  max=330.57ms
+    http_req_failed............................: 0.28%   74 out of 26155
+    http_reqs..................................: 26155   433.881113/s
+
+    EXECUTION
+    iteration_duration.........................: min=50.97ms avg=279.2ms  med=292.87ms p(90)=314.69ms p(95)=339.15ms p(99)=396.19ms max=584.31ms
+    iterations.................................: 9000    149.299561/s
+    vus........................................: 40      min=38           max=52 
+    vus_max....................................: 300     min=300          max=300
+
+    NETWORK
+    data_received..............................: 12 MB   203 kB/s
+    data_sent..................................: 2.3 MB  38 kB/s
+
+
+
+
+running (1m00.3s), 0000/0300 VUs, 9000 complete and 0 interrupted iterations
+booking_failures_constant_rate ✓ [================================] 0000/0300 VUs  1m0s  150.00 iters/s
