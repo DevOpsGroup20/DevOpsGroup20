@@ -1,0 +1,51 @@
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/booking-workflow.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1500 max VUs, 1m0s max duration (incl. graceful stop):
+              * booking_put_rate: 300.00 iterations/s for 30s (maxVUs: 300-1500, gracefulStop: 30s)
+
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 9001    296.982403/s
+    checks_succeeded...: 100.00% 9001 out of 9001
+    checks_failed......: 0.00%   0 out of 9001
+
+    ✓ PUT /ticket accepted
+
+    CUSTOM
+    booking_completion_latency.....: min=29ms    avg=266.32ms med=265ms    p(90)=274ms    p(95)=281ms    p(99)=345ms    max=776ms   
+    booking_failed_rate............: 0.00%  0 out of 9001
+    bookings_completed.............: 9001   296.982403/s
+    bookings_started...............: 9001   296.982403/s
+
+    HTTP
+    http_req_duration..............: min=20.04ms avg=33.47ms  med=31.24ms  p(90)=38.26ms  p(95)=44.99ms  p(99)=93.57ms  max=526.88ms
+      { expected_response:true }...: min=20.04ms avg=33.47ms  med=31.24ms  p(90)=38.26ms  p(95)=45ms     p(99)=93.68ms  max=526.88ms
+    http_req_failed................: 0.28%  78 out of 26912
+    http_reqs......................: 26912  887.944722/s
+
+    EXECUTION
+    iteration_duration.............: min=84.3ms  avg=299.86ms med=294.01ms p(90)=318.52ms p(95)=344.87ms p(99)=409.96ms max=1.33s   
+    iterations.....................: 9001   296.982403/s
+    vus............................: 89     min=86          max=108
+    vus_max........................: 300    min=300         max=300
+
+    NETWORK
+    data_received..................: 13 MB  424 kB/s
+    data_sent......................: 1.9 MB 64 kB/s
+
+
+
+
+running (0m30.3s), 0000/0300 VUs, 9001 complete and 0 interrupted iterations
+booking_put_rate ✓ [======================================] 0000/0300 VUs  30s  300.00 iters/s

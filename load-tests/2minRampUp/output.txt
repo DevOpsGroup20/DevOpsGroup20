@@ -1,0 +1,51 @@
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/booking-workflow-ramp-up.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1500 max VUs, 2m30s max duration (incl. graceful stop):
+              * booking_put_ramp_up: Up to 150.00 iterations/s for 2m0s over 1 stages (maxVUs: 300-1500, gracefulStop: 30s)
+
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 8999    74.813158/s
+    checks_succeeded...: 100.00% 8999 out of 8999
+    checks_failed......: 0.00%   0 out of 8999
+
+    ✓ PUT /ticket accepted
+
+    CUSTOM
+    booking_completion_latency.....: min=28ms    avg=266.71ms med=265ms    p(90)=276ms    p(95)=283.09ms p(99)=353.01ms max=759ms   
+    booking_failed_rate............: 0.00%  0 out of 8999
+    bookings_completed.............: 8999   74.813158/s
+    bookings_started...............: 8999   74.813158/s
+
+    HTTP
+    http_req_duration..............: min=20.8ms  avg=34.01ms  med=31.39ms  p(90)=39.09ms  p(95)=46.64ms  p(99)=106.7ms  max=586.93ms
+      { expected_response:true }...: min=20.8ms  avg=34.01ms  med=31.38ms  p(90)=39.09ms  p(95)=46.7ms   p(99)=106.78ms max=586.93ms
+    http_req_failed................: 0.29%  79 out of 26874
+    http_reqs......................: 26874  223.416914/s
+
+    EXECUTION
+    iteration_duration.............: min=88.95ms avg=300.59ms med=294.67ms p(90)=322.07ms p(95)=352.73ms p(99)=405.26ms max=799.62ms
+    iterations.....................: 8999   74.813158/s
+    vus............................: 45     min=0           max=47 
+    vus_max........................: 300    min=300         max=300
+
+    NETWORK
+    data_received..................: 13 MB  106 kB/s
+    data_sent......................: 1.9 MB 16 kB/s
+
+
+
+
+running (2m00.3s), 0000/0300 VUs, 8999 complete and 0 interrupted iterations
+booking_put_ramp_up ✓ [======================================] 0000/0300 VUs  2m0s  150.00 iters/s
