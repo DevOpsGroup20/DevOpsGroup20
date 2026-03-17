@@ -1,0 +1,54 @@
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/booking-workflow.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1500 max VUs, 5m30s max duration (incl. graceful stop):
+              * booking_put_rate: 150.00 iterations/s for 5m0s (maxVUs: 300-1500, gracefulStop: 30s)
+
+WARN[0073] The test has generated metrics with 100037 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details.  component=metrics-engine-ingester
+WARN[0146] The test has generated metrics with 200027 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details.  component=metrics-engine-ingester
+WARN[0293] The test has generated metrics with 400016 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details.  component=metrics-engine-ingester
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 45001   136.366568/s
+    checks_succeeded...: 100.00% 45001 out of 45001
+    checks_failed......: 0.00%   0 out of 45001
+
+    ✓ PUT /ticket accepted
+
+    CUSTOM
+    booking_completion_latency.....: min=27ms    avg=264.86ms med=264ms    p(90)=273ms   p(95)=280ms    p(99)=336ms    max=870ms   
+    booking_failed_rate............: 0.00%  0 out of 45000
+    bookings_completed.............: 45000  136.363538/s
+    bookings_started...............: 45001  136.366568/s
+
+    HTTP
+    http_req_duration..............: min=19.92ms avg=32.72ms  med=30.75ms  p(90)=37.3ms  p(95)=43.04ms  p(99)=92.43ms  max=745.65ms
+      { expected_response:true }...: min=19.92ms avg=32.72ms  med=30.75ms  p(90)=37.31ms p(95)=43.08ms  p(99)=92.48ms  max=745.65ms
+    http_req_failed................: 0.54%  730 out of 134805
+    http_reqs......................: 134805 408.499704/s
+
+    EXECUTION
+    iteration_duration.............: min=81.58ms avg=296.39ms med=292.52ms p(90)=310.4ms p(95)=328.48ms p(99)=388.73ms max=986.43ms
+    iterations.....................: 45000  136.363538/s
+    vus............................: 1      min=1             max=85 
+    vus_max........................: 300    min=300           max=300
+
+    NETWORK
+    data_received..................: 59 MB  178 kB/s
+    data_sent......................: 7.6 MB 23 kB/s
+
+
+
+
+running (5m30.0s), 0000/0300 VUs, 45000 complete and 1 interrupted iterations
+booking_put_rate ✓ [======================================] 0001/0300 VUs  5m0s  150.00 iters/s

@@ -78,13 +78,6 @@ Resources:
       KeySchema:
         - AttributeName: id
           KeyType: HASH
-  PaymentQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: payment-request.fifo
-      FifoQueue: true
-      ContentBasedDeduplication: true
-      VisibilityTimeout: 60
   BookingWorkflow:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -134,22 +127,36 @@ Resources:
                 ":updatedAt":
                   S.$: $$.State.EnteredTime
             ResultPath: $.meta.addReservationId
-            Next: Payment request
-          Payment request:
+            Next: Payment
+          Payment:
             Type: Task
-            Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
             Parameters:
-              QueueUrl: ${payment_queue_url}
-              MessageGroupId.$: $$.Execution.Name
-              MessageBody:
-                taskToken.$: $$.Task.Token
-                bookingReferenceId.$: $$.Execution.Name
-                payload.$: $
+              Payload.$: $
+              FunctionName: ${payment_func_name}
             Catch:
               - ErrorEquals:
                   - States.ALL
                 Next: Release Seats
             TimeoutSeconds: 30
+            Next: Add paymentConfirmationId
+          Add paymentConfirmationId:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:updateItem
+            Parameters:
+              TableName: ${bookings_table_name}
+              Key:
+                bookingReferenceId:
+                  S.$: $$.Execution.Name
+              UpdateExpression: SET paymentConfirmationId = :paymentConfirmationId, updatedAt
+                = :updatedAt
+              ExpressionAttributeValues:
+                ':paymentConfirmationId':
+                  S.$: $.paymentConfirmationId
+                ':updatedAt':
+                  S.$: $$.State.EnteredTime
+            ResultPath: $.meta.addPaymentConfirmationId
             Next: Ticket Generation
           Ticket Generation:
             Type: Task
@@ -239,6 +246,8 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref SeatReservation
         - LambdaInvokePolicy:
+            FunctionName: !Ref Payment
+        - LambdaInvokePolicy:
             FunctionName: !Ref TicketGeneration
         - Statement:
             - Effect: Allow
@@ -251,19 +260,14 @@ Resources:
               Action:
                 - dynamodb:UpdateItem
               Resource: !GetAtt SeatCapacity.Arn
-        - Statement:
-            - Effect: Allow
-              Action:
-                - sqs:SendMessage
-              Resource: !GetAtt PaymentQueue.Arn
       Tracing:
         Enabled: true
-      Type: STANDARD
+      Type: EXPRESS
       DefinitionSubstitutions:
         bookings_table_name: !Ref Bookings
         seat_capacity_table_name: !Ref SeatCapacity
         seat_reservation_func_name: !GetAtt SeatReservation.Arn
-        payment_queue_url: !Ref PaymentQueue
+        payment_func_name: !GetAtt Payment.Arn
         ticket_generation_func_name: !GetAtt TicketGeneration.Arn
       Events:
         APIPUTticket:
@@ -389,24 +393,7 @@ Resources:
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
-      Environment:
-        Variables:
-          BOOKINGS_TABLE_NAME: !Ref Bookings
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref Bookings
-        - Statement:
-            - Effect: Allow
-              Action:
-                - states:SendTaskSuccess
-                - states:SendTaskFailure
-              Resource: "*"
-      Events:
-        PaymentQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt PaymentQueue.Arn
-            BatchSize: 1
+      Environment: {}
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
