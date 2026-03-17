@@ -1,0 +1,33 @@
+﻿Issue Type,Issue key,Issue id,Summary,Assignee,Assignee Id,Status,Resolution,Created,Sprint,Story point estimate
+Task,DEVOPS-38,10261,Document user-defined IAM policies,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/26/26 11:50,Sprint 2: Migration + Deploy,
+Task,DEVOPS-36,10195,Update Diagram and README based on new architecture,Dimitris Thomopoulos,712020:4e644377-03fa-4369-a43d-bf24b9dbcd39,Done,Done,2/26/26 11:54,Sprint 2: Migration + Deploy,1
+Task,DEVOPS-35,10194,cost estimation,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/26/26 11:19,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-34,10161,add sqs / change to normal step functions,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/25/26 14:29,Sprint 2: Migration + Deploy,5
+Task,DEVOPS-33,10160,Fix Put Response,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/25/26 14:06,Sprint 2: Migration + Deploy,3
+Task,DEVOPS-32,10159,Change 200 -> 202,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/25/26 14:06,Sprint 2: Migration + Deploy,1
+Task,DEVOPS-31,10126,End-to-end testing (local and Github pipeline),Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/25/26 11:07,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-30,10093,Ticket generation full implementation,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/20/26 13:31,Sprint 2: Migration + Deploy,1
+Task,DEVOPS-29,10092,Payment full implementation,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/20/26 13:31,Sprint 2: Migration + Deploy,1
+Task,DEVOPS-28,10091,Seat Reservation full implementation,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/20/26 13:31,Sprint 2: Migration + Deploy,4
+Task,DEVOPS-27,10058,LocalStack integration for testing purposes,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 23:26,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-26,10025,test github jira integration,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/19/26 14:18,Sprint 2: Migration + Deploy,1
+Task,DEVOPS-16,10015,Requirements Document,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,2/19/26 14:05,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-15,10014,CI/CD CloudFormation pipeline,Dimitris Thomopoulos,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,4
+Task,DEVOPS-14,10013,Ticket generation service lambda setup,Dimitris Thomopoulos,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-13,10012,Payment lambda setup,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,4
+Task,DEVOPS-12,10011,Seat reservation lambda setup,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-11,10010,Create Booking lambda ,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-9,10008,DynamoDB schema for booking lifecycle,Dimitris Thomopoulos,712020:4e644377-03fa-4369-a43d-bf24b9dbcd39,Done,Done,2/19/26 14:03,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-7,10006,IAM least privilege baseline,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:02,Sprint 2: Migration + Deploy,2
+Task,DEVOPS-6,10005,Establish accounts and environments,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:02,Sprint 2: Migration + Deploy,4
+Task,DEVOPS-5,10004,Bootstrap infrastructure as code,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,2/19/26 14:02,Sprint 2: Migration + Deploy,4
+Task,DEVOPS-43,10298,Remove SQS and migrate to Express SFN workflow,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,3/11/26 20:18,"Sprint 3: Elasticity, Ops",8
+Task,DEVOPS-42,10297,Set up at least 2 alerts,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,3/11/26 18:21,"Sprint 3: Elasticity, Ops",1
+Task,DEVOPS-41,10296,Final Load Testing,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,3/11/26 18:12,"Sprint 3: Elasticity, Ops",4
+Task,DEVOPS-39,10294,CloudWatch Dashboard -> Cleanup and Create One Clean Dashboard,Björgvin Júlíusson,63e0db8f010d35637973c05a,Done,Done,3/11/26 18:11,"Sprint 3: Elasticity, Ops",4
+Task,DEVOPS-37,10228,Set up code quality and linting. Maybe pre-commit checks?,Dimitris Thomopoulos,712020:4e644377-03fa-4369-a43d-bf24b9dbcd39,Done,Done,2/26/26 16:41,"Sprint 3: Elasticity, Ops",2
+Task,DEVOPS-22,10021,Final cost estimation,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/19/26 14:11,"Sprint 3: Elasticity, Ops",2
+Task,DEVOPS-45,10364,"Update the GitHub Readme based on what we actually did (e.g. architecture, no SQS, etc.)",,,Done,Done,3/12/26 16:12,Sprint 4: Hardening,1
+Task,DEVOPS-44,10331,Setup basic frontend for demo,Hubert Mazur,712020:6bcf0e04-30d1-40d8-9c1a-9247978f5590,Done,Done,3/12/26 13:25,Sprint 4: Hardening,3
+Task,DEVOPS-40,10295,Final Presentation,,,Done,Done,3/11/26 18:12,Sprint 4: Hardening,8
+Task,DEVOPS-23,10022,Create demo recording,Kacper Machaj,712020:5c7e390c-5e8f-4010-a55c-64cc939fe387,Done,Done,2/19/26 14:11,Sprint 4: Hardening,2
