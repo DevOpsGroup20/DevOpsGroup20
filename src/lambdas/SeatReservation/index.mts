@@ -45,7 +45,7 @@ export const handler: Handler<BookingEvent, BookingEvent> = async (event) => {
     );
   } catch (error) {
     if (error instanceof ConditionalCheckFailedException) {
-      throw new Error("NoSeatsAvailable");
+      throw new Error("NoSeatsAvailable", { cause: error });
     }
     throw error;
   }

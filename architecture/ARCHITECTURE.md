@@ -65,18 +65,18 @@ To prevent pool exhaustion and noisy-neighbour throttling, each function carries
 
 ### Networking
 
-| Service | Name / Instance | Notes |
-|---|---|---|
-| **VPC** | `booking-vpc` (10.0.0.0/16) | Network isolation boundary for all compute |
-| **Private Subnet** | `private-subnet-a` (10.0.2.0/24) | AZ us-east-1a — Lambda ENIs; hosts Interface Endpoint ENIs |
-| **Private Subnet** | `private-subnet-b` (10.0.3.0/24) | AZ us-east-1b — Lambda ENIs |
-| **Security Group** | `lambda-sg` | Allows outbound to VPC endpoints only; no inbound |
-| **Security Group** | `vpce-sg` | Allows inbound 443 from `lambda-sg` only |
-| **VPC Endpoint** | `ddb-gateway-endpoint` (Gateway, free) | Private DynamoDB access from Lambda; no data transfer charges |
-| **VPC Endpoint** | `sqs-interface-endpoint` (Interface, AZ-a only) | Private SQS access from Lambda |
-| **VPC Endpoint** | `sfn-interface-endpoint` (Interface, AZ-a only) | Private Step Functions access from Lambda (initiator, payment) |
-| **VPC Endpoint** | `cwlogs-interface-endpoint` (Interface, AZ-a only) | Private CloudWatch Logs access from Lambda |
-| **Route Table** | `private-rt-a`, `private-rt-b` | DynamoDB prefix → Gateway Endpoint; no default route needed — all AWS API calls stay within the VPC via Interface Endpoints |
+| Service            | Name / Instance                                    | Notes                                                                                                                       |
+| ------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **VPC**            | `booking-vpc` (10.0.0.0/16)                        | Network isolation boundary for all compute                                                                                  |
+| **Private Subnet** | `private-subnet-a` (10.0.2.0/24)                   | AZ us-east-1a — Lambda ENIs; hosts Interface Endpoint ENIs                                                                  |
+| **Private Subnet** | `private-subnet-b` (10.0.3.0/24)                   | AZ us-east-1b — Lambda ENIs                                                                                                 |
+| **Security Group** | `lambda-sg`                                        | Allows outbound to VPC endpoints only; no inbound                                                                           |
+| **Security Group** | `vpce-sg`                                          | Allows inbound 443 from `lambda-sg` only                                                                                    |
+| **VPC Endpoint**   | `ddb-gateway-endpoint` (Gateway, free)             | Private DynamoDB access from Lambda; no data transfer charges                                                               |
+| **VPC Endpoint**   | `sqs-interface-endpoint` (Interface, AZ-a only)    | Private SQS access from Lambda                                                                                              |
+| **VPC Endpoint**   | `sfn-interface-endpoint` (Interface, AZ-a only)    | Private Step Functions access from Lambda (initiator, payment)                                                              |
+| **VPC Endpoint**   | `cwlogs-interface-endpoint` (Interface, AZ-a only) | Private CloudWatch Logs access from Lambda                                                                                  |
+| **Route Table**    | `private-rt-a`, `private-rt-b`                     | DynamoDB prefix → Gateway Endpoint; no default route needed — all AWS API calls stay within the VPC via Interface Endpoints |
 
 > **Cost note:** Gateway endpoints (DynamoDB) are free. Interface endpoints (PrivateLink) cost ~\$0.01/hr per AZ. With 3 Interface Endpoints in a single AZ ≈ **$22/month**. Expanding to 2 AZs doubles this cost and is described in the [Future Enhancements](#future-enhancements) section.
 
@@ -120,10 +120,10 @@ To prevent pool exhaustion and noisy-neighbour throttling, each function carries
 
 ### Cost Management
 
-| Service | Name / Instance | Purpose |
-|---|---|---|
-| **AWS Budgets** | `monthly-budget` | Alert when monthly spend exceeds threshold |
-| **AWS Cost Explorer** | — | Per-service cost breakdown and trend analysis |
+| Service               | Name / Instance  | Purpose                                       |
+| --------------------- | ---------------- | --------------------------------------------- |
+| **AWS Budgets**       | `monthly-budget` | Alert when monthly spend exceeds threshold    |
+| **AWS Cost Explorer** | —                | Per-service cost breakdown and trend analysis |
 
 ---
 
@@ -182,6 +182,7 @@ Resource: "arn:aws:states:::sqs:sendMessage.waitForTaskToken"
 The state embeds `$$.Task.Token` directly in the SQS message body. The Step Functions execution pauses with zero cost (Standard Workflows charge per state transition, not idle time). When `Payment` calls `SendTaskSuccess(token, result)`, the execution resumes. Step Functions sends the SQS message via **AWS-internal routing** — it does not traverse the VPC's SQS Interface Endpoint. The Interface Endpoint exists to serve Lambda functions running inside the VPC that need to call SQS APIs directly from their code.
 
 **Why no Lambda intermediary:**
+
 - Eliminates a cold start and Lambda cost on every booking
 - No custom code to maintain for a pure "forward the message" operation
 - The task token arrives at the payment Lambda via the SQS message — it is already there
@@ -196,6 +197,7 @@ Express Workflows do not support `waitForTaskToken`. The payment callback patter
 ### Lambda in Private VPC Subnets
 
 Lambdas are placed in private subnets to enable:
+
 - Security group rules restricting egress to only required VPC endpoints
 - Network-level isolation as a defense-in-depth layer (IAM remains the primary security boundary)
 - Future VPC resources (e.g., RDS) without architecture rework
@@ -227,11 +229,11 @@ When the timeout expires, Step Functions raises a `States.TaskFailed` error that
 
 `GetBooking` maintains a **module-level in-memory cache** within each Lambda execution environment. The cache key is `bookingReferenceId`; the TTL depends on the status value returned from DynamoDB:
 
-| Status | Cache TTL | Rationale |
-|---|---|---|
-| `IN_PROGRESS` | 3 s | Workflow completes in seconds; stale data would mislead the client |
-| `CONFIRMED` | 60 s | Terminal state; value never changes |
-| `FAILED` | 60 s | Terminal state; value never changes |
+| Status        | Cache TTL | Rationale                                                          |
+| ------------- | --------- | ------------------------------------------------------------------ |
+| `IN_PROGRESS` | 3 s       | Workflow completes in seconds; stale data would mislead the client |
+| `CONFIRMED`   | 60 s      | Terminal state; value never changes                                |
+| `FAILED`      | 60 s      | Terminal state; value never changes                                |
 
 Cache entries are stored as `{ value, expiresAt }` tuples in a module-scope `Map`. On each invocation the function checks the cache before calling DynamoDB; a miss or expired entry triggers a fresh `GetItem` and repopulates the cache.
 
@@ -246,10 +248,10 @@ All API Gateway routes require an `x-api-key` header. Keys are issued through th
 
 The Usage Plan enforces **per-route throttling** as a cost-free guard against accidental over-use and enumeration:
 
-| Route | Steady-state RPS | Burst RPS |
-|---|---|---|
-| `PUT /ticket` | 10 | 50 |
-| `GET /booking/{id}` | 50 | 100 |
+| Route               | Steady-state RPS | Burst RPS |
+| ------------------- | ---------------- | --------- |
+| `PUT /ticket`       | 10               | 50        |
+| `GET /booking/{id}` | 50               | 100       |
 
 API key auth is intentionally lightweight — it provides client identity and a throttle boundary suitable for a course assignment. For production use, Cognito or IAM-based authentication would be layered on top.
 
@@ -273,10 +275,10 @@ Requests that exceed the limit receive a `429 Too Many Requests` response direct
 
 **Configuration** (CDK context):
 
-| Parameter | Default | Description |
-|---|---|---|
-| `enablePutRateLimit` | `true` | Set to `false` to disable the WAF rule (e.g., for stress tests) |
-| `putRateLimitCount` | `60` | Max requests per IP per 5-minute window |
+| Parameter            | Default | Description                                                     |
+| -------------------- | ------- | --------------------------------------------------------------- |
+| `enablePutRateLimit` | `true`  | Set to `false` to disable the WAF rule (e.g., for stress tests) |
+| `putRateLimitCount`  | `60`    | Max requests per IP per 5-minute window                         |
 
 When `enablePutRateLimit` is `false`, the WAF Web ACL remains attached to API Gateway but the rate-based rule is removed, allowing unlimited throughput from any IP.
 

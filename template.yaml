@@ -8,13 +8,13 @@ Resources:
         - ResourceName: API
       StageName: Prod
       DefinitionBody:
-        openapi: '3.0'
+        openapi: "3.0"
         info: {}
         paths:
           /ticket:
             put:
               responses:
-                '202':
+                "202":
                   description: default Accepted response
               x-amazon-apigateway-integration:
                 credentials: !GetAtt APIToBookingWorkflowRole.Arn
@@ -46,9 +46,9 @@ Resources:
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
       Cors:
-        AllowMethods: '''PUT,GET,OPTIONS'''
-        AllowHeaders: '''Content-Type'''
-        AllowOrigin: '''*'''
+        AllowMethods: "'PUT,GET,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
         MaxAge: 5
   Bookings:
     Type: AWS::DynamoDB::Table
@@ -122,9 +122,9 @@ Resources:
                   S.$: $$.Execution.Name
               UpdateExpression: SET reservationId = :reservationId, updatedAt = :updatedAt
               ExpressionAttributeValues:
-                ':reservationId':
+                ":reservationId":
                   S.$: $.reservationId
-                ':updatedAt':
+                ":updatedAt":
                   S.$: $$.State.EnteredTime
             ResultPath: $.meta.addReservationId
             Next: Payment
@@ -181,11 +181,11 @@ Resources:
               UpdateExpression: SET ticketId = :ticketId, bookingStatus = :bookingStatus,
                 updatedAt = :updatedAt
               ExpressionAttributeValues:
-                ':ticketId':
+                ":ticketId":
                   S.$: $.ticketId
-                ':bookingStatus':
+                ":bookingStatus":
                   S: COMPLETED
-                ':updatedAt':
+                ":updatedAt":
                   S.$: $$.State.EnteredTime
             End: true
           Release Seats:
@@ -198,8 +198,8 @@ Resources:
                   S: CAPACITY
               UpdateExpression: SET availableSeats = availableSeats + :inc
               ExpressionAttributeValues:
-                ':inc':
-                  'N': '1'
+                ":inc":
+                  "N": "1"
             ResultPath: $.meta.releaseSeats
             Next: Fail booking
           Fail booking:
@@ -212,9 +212,9 @@ Resources:
                   S.$: $$.Execution.Name
               UpdateExpression: SET bookingStatus = :bookingStatus, updatedAt = :updatedAt
               ExpressionAttributeValues:
-                ':bookingStatus':
+                ":bookingStatus":
                   S: FAILED
-                ':updatedAt':
+                ":updatedAt":
                   S.$: $$.State.EnteredTime
             End: true
             Retry:
@@ -242,7 +242,7 @@ Resources:
                 - logs:PutResourcePolicy
                 - logs:DescribeResourcePolicies
                 - logs:DescribeLogGroups
-              Resource: '*'
+              Resource: "*"
         - LambdaInvokePolicy:
             FunctionName: !Ref SeatReservation
         - LambdaInvokePolicy:
@@ -316,7 +316,7 @@ Resources:
         EntryPoints:
           - index.mts
         External:
-          - '@aws-sdk/*'
+          - "@aws-sdk/*"
           - aws-sdk
         Minify: false
   GetBookingLogGroup:
@@ -330,7 +330,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Action: sts:AssumeRole
@@ -339,7 +339,7 @@ Resources:
       Policies:
         - PolicyName: ExecuteStateMachine
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: states:StartExecution
@@ -371,7 +371,7 @@ Resources:
         EntryPoints:
           - index.mts
         External:
-          - '@aws-sdk/*'
+          - "@aws-sdk/*"
           - aws-sdk
         Minify: false
   SeatReservationLogGroup:
@@ -400,7 +400,7 @@ Resources:
         EntryPoints:
           - index.mts
         External:
-          - '@aws-sdk/*'
+          - "@aws-sdk/*"
           - aws-sdk
         Minify: false
   PaymentLogGroup:
@@ -429,7 +429,7 @@ Resources:
         EntryPoints:
           - index.mts
         External:
-          - '@aws-sdk/*'
+          - "@aws-sdk/*"
           - aws-sdk
         Minify: false
   TicketGenerationLogGroup:
